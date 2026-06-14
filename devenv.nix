@@ -15,6 +15,17 @@
       enable = true;
       package = pkgs.php85;
     };
+    python = {
+      enable = true;
+      venv = {
+        enable = true;
+        requirements = ''
+          ortools
+          fastapi
+          uvicorn[standard]
+        '';
+      };
+    };
   };
 
   services = {
