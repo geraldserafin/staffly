@@ -1,22 +1,21 @@
 <?php
 
-namespace App\Members\Models;
+namespace App\Scheduling\Models;
 
-use App\Organizations\Models\Organization;
+use App\Scheduling\Enums\SolveStatus;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class Member extends Model
+class SolveRun extends Model
 {
     use HasFactory;
     use HasUuids;
 
     protected $fillable = [
-        'name',
-        'priority',
-        'max_hours_per_week',
+        'status',
+        'diagnostics',
     ];
 
     /**
@@ -25,13 +24,13 @@ class Member extends Model
     protected function casts(): array
     {
         return [
-            'priority' => 'integer',
-            'max_hours_per_week' => 'integer',
+            'status' => SolveStatus::class,
+            'diagnostics' => 'array',
         ];
     }
 
-    public function organization(): BelongsTo
+    public function schedule(): BelongsTo
     {
-        return $this->belongsTo(Organization::class);
+        return $this->belongsTo(Schedule::class);
     }
 }

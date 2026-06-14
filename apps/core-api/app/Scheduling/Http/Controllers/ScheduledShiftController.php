@@ -8,13 +8,16 @@ use App\Scheduling\Actions\CreateShift;
 use App\Scheduling\Actions\DeleteShift;
 use App\Scheduling\Actions\ListScheduleShifts;
 use App\Scheduling\Actions\ListShiftAssignments;
+use App\Scheduling\Actions\SetAssignmentLock;
 use App\Scheduling\Actions\UnassignMember;
 use App\Scheduling\Http\Requests\StoreAssignmentRequest;
 use App\Scheduling\Http\Requests\StoreShiftRequest;
+use App\Scheduling\Http\Requests\UpdateAssignmentRequest;
 use App\Scheduling\Http\Resources\ScheduledShiftResource;
 use App\Scheduling\Http\Resources\ShiftAssignmentResource;
 use App\Scheduling\Models\Schedule;
 use App\Scheduling\Models\ScheduledShift;
+use App\Scheduling\Models\ShiftAssignment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
@@ -66,5 +69,13 @@ class ScheduledShiftController
         $action->handle($scheduledShift, $member);
 
         return response()->noContent();
+    }
+
+    // Pin/unpin an assignment so the solver keeps (or releases) it on re-solve.
+    public function setLock(UpdateAssignmentRequest $request, ShiftAssignment $shiftAssignment, SetAssignmentLock $action): ShiftAssignmentResource
+    {
+        return ShiftAssignmentResource::make(
+            $action->handle($shiftAssignment, $request->boolean('locked'))
+        );
     }
 }

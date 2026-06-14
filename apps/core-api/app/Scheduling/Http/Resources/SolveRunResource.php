@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Members\Http\Resources;
+namespace App\Scheduling\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class MemberResource extends JsonResource
+class SolveRunResource extends JsonResource
 {
     /**
      * @return array<string, mixed>
@@ -14,10 +14,9 @@ class MemberResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'organizationId' => $this->organization_id,
-            'name' => $this->name,
-            'priority' => $this->priority,
-            'maxHoursPerWeek' => $this->max_hours_per_week,
+            'scheduleId' => $this->schedule_id,
+            'status' => $this->status,
+            'diagnostics' => $this->diagnostics,
             'createdAt' => $this->created_at,
             'updatedAt' => $this->updated_at,
         ];

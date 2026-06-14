@@ -3,7 +3,13 @@
 use App\Scheduling\Http\Controllers\ScheduleController;
 use App\Scheduling\Http\Controllers\ScheduledShiftController;
 use App\Scheduling\Http\Controllers\ShiftRequirementController;
+use App\Scheduling\Http\Controllers\SolveController;
+use App\Scheduling\Http\Controllers\TeamRuleController;
 use Illuminate\Support\Facades\Route;
+
+// Team scheduling rules (hard legal/safety limits)
+Route::get('teams/{team}/rules', [TeamRuleController::class, 'show']);
+Route::put('teams/{team}/rules', [TeamRuleController::class, 'update']);
 
 // Schedules
 Route::get('teams/{team}/schedules', [ScheduleController::class, 'index']);
@@ -13,6 +19,10 @@ Route::put('schedules/{schedule}', [ScheduleController::class, 'update']);
 Route::delete('schedules/{schedule}', [ScheduleController::class, 'destroy']);
 Route::post('schedules/{schedule}/publish', [ScheduleController::class, 'publish']);
 Route::post('schedules/{schedule}/archive', [ScheduleController::class, 'archive']);
+
+// Solver
+Route::post('schedules/{schedule}/solve', [SolveController::class, 'solve']);
+Route::get('solve-runs/{solveRun}', [SolveController::class, 'show']);
 
 // Shifts within a schedule
 Route::get('schedules/{schedule}/shifts', [ScheduledShiftController::class, 'index']);
@@ -28,3 +38,4 @@ Route::delete('shift-requirements/{shiftRequirement}', [ShiftRequirementControll
 Route::get('scheduled-shifts/{scheduledShift}/assignments', [ScheduledShiftController::class, 'assignments']);
 Route::post('scheduled-shifts/{scheduledShift}/assignments', [ScheduledShiftController::class, 'assign']);
 Route::delete('scheduled-shifts/{scheduledShift}/assignments/{member}', [ScheduledShiftController::class, 'unassign']);
+Route::patch('shift-assignments/{shiftAssignment}', [ScheduledShiftController::class, 'setLock']);

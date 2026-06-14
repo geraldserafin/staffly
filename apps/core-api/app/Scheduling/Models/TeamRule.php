@@ -1,22 +1,22 @@
 <?php
 
-namespace App\Members\Models;
+namespace App\Scheduling\Models;
 
-use App\Organizations\Models\Organization;
+use App\Teams\Models\Team;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class Member extends Model
+class TeamRule extends Model
 {
     use HasFactory;
     use HasUuids;
 
     protected $fillable = [
-        'name',
-        'priority',
+        'min_rest_hours',
         'max_hours_per_week',
+        'max_consecutive_days',
     ];
 
     /**
@@ -25,13 +25,14 @@ class Member extends Model
     protected function casts(): array
     {
         return [
-            'priority' => 'integer',
+            'min_rest_hours' => 'integer',
             'max_hours_per_week' => 'integer',
+            'max_consecutive_days' => 'integer',
         ];
     }
 
-    public function organization(): BelongsTo
+    public function team(): BelongsTo
     {
-        return $this->belongsTo(Organization::class);
+        return $this->belongsTo(Team::class);
     }
 }
