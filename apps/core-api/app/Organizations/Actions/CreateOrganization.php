@@ -2,6 +2,7 @@
 
 namespace App\Organizations\Actions;
 
+use App\Organizations\Events\OrganizationCreated;
 use App\Organizations\Models\Organization;
 
 class CreateOrganization
@@ -13,6 +14,8 @@ class CreateOrganization
     {
         $organization = new Organization($data);
         $organization->save();
+
+        OrganizationCreated::dispatch($organization);
 
         return $organization;
     }
