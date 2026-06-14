@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://devenv.sh/devenv.schema.json
+inputs:
+  nixpkgs:
+    url: github:cachix/devenv-nixpkgs/rolling
+
+# If you're using non-OSS software, you can set allowUnfree to true.
+allowUnfree: true
+
+# If you're not willing to allow unsupported packages:
+# allowUnsupportedSystem: false
+
+# MinIO is abandoned upstream + flagged insecure in nixpkgs. Allowed here for
+# LOCAL DEV ONLY (localhost, dev creds). Do not expose this to a network.
+permittedInsecurePackages:
+  - "minio"
+
+# If you have more than one devenv you can merge them
+#imports:
+# - ./backend
