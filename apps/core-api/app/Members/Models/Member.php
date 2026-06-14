@@ -15,7 +15,18 @@ class Member extends Model
 
     protected $fillable = [
         'name',
+        'priority',
     ];
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function casts(): array
+    {
+        return [
+            'priority' => 'integer',
+        ];
+    }
 
     public function organization(): BelongsTo
     {

@@ -18,6 +18,8 @@ class UpdateMemberRequest extends FormRequest
     {
         return [
             'name' => ['sometimes', 'required', 'string', 'max:255'],
+            // Manager-set seniority tier.
+            'priority' => ['sometimes', 'integer', 'min:1'],
         ];
     }
 }

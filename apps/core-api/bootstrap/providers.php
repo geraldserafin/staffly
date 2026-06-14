@@ -9,4 +9,5 @@ return [
     App\ShiftTemplates\ShiftTemplateServiceProvider::class,
     App\Scheduling\SchedulingServiceProvider::class,
     App\Availability\AvailabilityServiceProvider::class,
+    App\Preferences\PreferenceServiceProvider::class,
 ];
