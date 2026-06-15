@@ -49,6 +49,7 @@ class GenerateScheduleShifts
                         'name' => $template->name,
                         'start_at' => $startAt,
                         'end_at' => $endAt,
+                        'rest_hours_after' => $template->rest_hours_after,
                     ]);
                     $shift->schedule()->associate($schedule);
                     $shift->template()->associate($template);

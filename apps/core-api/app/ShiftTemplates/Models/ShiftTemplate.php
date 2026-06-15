@@ -20,6 +20,7 @@ class ShiftTemplate extends Model
         'name',
         'start_time',
         'end_time',
+        'rest_hours_after',
         'recurrence_frequency',
         'recurrence_days',
     ];
@@ -30,6 +31,7 @@ class ShiftTemplate extends Model
     protected function casts(): array
     {
         return [
+            'rest_hours_after' => 'integer',
             'recurrence_frequency' => RecurrenceFrequency::class,
             'recurrence_days' => 'array',
         ];

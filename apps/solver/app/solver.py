@@ -34,6 +34,17 @@ def solve_schedule(req: SolveRequest) -> SolveResponse:
     eligible = {m.id: set(m.eligibleShiftIds) for m in req.members}
     start = {s.id: _parse(s.startAt) for s in req.shifts}
     end = {s.id: _parse(s.endAt) for s in req.shifts}
+    rest = {s.id: (s.restHoursAfter or 0) for s in req.shifts}
+
+    def conflicts(a: str, b: str) -> bool:
+        # Two shifts conflict for a member if the gap between them is shorter
+        # than the rest the earlier one requires (overlap = negative gap).
+        if start[a] <= start[b]:
+            earlier_end, earlier_rest, later_start = end[a], rest[a], start[b]
+        else:
+            earlier_end, earlier_rest, later_start = end[b], rest[b], start[a]
+        gap_hours = (later_start - earlier_end).total_seconds() / 3600
+        return gap_hours < earlier_rest
 
     fill: dict[tuple[str, str, str], cp_model.IntVar] = {}
     works: dict[tuple[str, str], cp_model.IntVar] = {}
@@ -68,28 +79,27 @@ def solve_schedule(req: SolveRequest) -> SolveResponse:
             model.Add(w == sum(slots))  # domain 0..1 forces "one slot per shift"
             works[(m.id, shift.id)] = w
 
-    # No double-booking across overlapping shifts.
+    # No double-booking + rest between a member's shifts.
     shift_ids = [s.id for s in req.shifts]
     for i, s1 in enumerate(shift_ids):
         for s2 in shift_ids[i + 1:]:
-            if start[s1] < end[s2] and end[s1] > start[s2]:
+            if conflicts(s1, s2):
                 for m in req.members:
                     a, b = works.get((m.id, s1)), works.get((m.id, s2))
                     if a is not None and b is not None:
                         model.Add(a + b <= 1)
 
-    # Locked assignments: fix on, and keep overlapping shifts off for that member.
+    # Locked assignments: fix on, and keep conflicting shifts off for that member.
     for lock in req.locked:
         w = works.get((lock.memberId, lock.shiftId))
         if w is not None:
             model.Add(w == 1)
-        locked_start, locked_end = start.get(lock.shiftId), end.get(lock.shiftId)
-        if locked_start is None:
+        if lock.shiftId not in start:
             continue
         for shift in req.shifts:
             if shift.id == lock.shiftId:
                 continue
-            if start[shift.id] < locked_end and end[shift.id] > locked_start:
+            if conflicts(shift.id, lock.shiftId):
                 other = works.get((lock.memberId, shift.id))
                 if other is not None:
                     model.Add(other == 0)

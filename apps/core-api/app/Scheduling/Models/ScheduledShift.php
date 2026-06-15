@@ -18,6 +18,7 @@ class ScheduledShift extends Model
         'name',
         'start_at',
         'end_at',
+        'rest_hours_after',
     ];
 
     /**
@@ -28,6 +29,7 @@ class ScheduledShift extends Model
         return [
             'start_at' => 'datetime',
             'end_at' => 'datetime',
+            'rest_hours_after' => 'integer',
         ];
     }
 

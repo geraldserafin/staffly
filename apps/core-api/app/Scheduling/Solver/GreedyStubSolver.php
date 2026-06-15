@@ -28,19 +28,21 @@ class GreedyStubSolver implements Solver
 
         $start = [];
         $end = [];
+        $rest = [];
         foreach ($request['shifts'] as $shift) {
             $start[$shift['id']] = Carbon::parse($shift['startAt']);
             $end[$shift['id']] = Carbon::parse($shift['endAt']);
+            $rest[$shift['id']] = (int) ($shift['restHoursAfter'] ?? 0);
         }
 
         $assignments = [];
         $onShift = [];  // shiftId => [memberId => true]
-        $busy = [];     // memberId => list<[Carbon, Carbon]>
+        $busy = [];     // memberId => list<[Carbon start, Carbon end, int restHours]>
 
         foreach ($request['locked'] as $lock) {
             $assignments[] = $lock;
             $onShift[$lock['shiftId']][$lock['memberId']] = true;
-            $busy[$lock['memberId']][] = [$start[$lock['shiftId']], $end[$lock['shiftId']]];
+            $busy[$lock['memberId']][] = [$start[$lock['shiftId']], $end[$lock['shiftId']], $rest[$lock['shiftId']]];
         }
 
         $shifts = $request['shifts'];
@@ -80,13 +82,13 @@ class GreedyStubSolver implements Solver
                     if (isset($onShift[$shiftId][$memberId])) {
                         continue;
                     }
-                    if ($this->clashes($busy[$memberId] ?? [], $start[$shiftId], $end[$shiftId])) {
+                    if ($this->clashes($busy[$memberId] ?? [], $start[$shiftId], $end[$shiftId], $rest[$shiftId])) {
                         continue;
                     }
 
                     $assignments[] = ['shiftId' => $shiftId, 'memberId' => $memberId];
                     $onShift[$shiftId][$memberId] = true;
-                    $busy[$memberId][] = [$start[$shiftId], $end[$shiftId]];
+                    $busy[$memberId][] = [$start[$shiftId], $end[$shiftId], $rest[$shiftId]];
                     $needed--;
                 }
 
@@ -107,12 +109,26 @@ class GreedyStubSolver implements Solver
     }
 
     /**
-     * @param  list<array{0: Carbon, 1: Carbon}>  $busy
+     * Conflict if the gap to a busy shift is shorter than the rest the earlier
+     * shift requires (overlap = negative gap).
+     *
+     * @param  list<array{0: Carbon, 1: Carbon, 2: int}>  $busy
      */
-    private function clashes(array $busy, Carbon $start, Carbon $end): bool
+    private function clashes(array $busy, Carbon $start, Carbon $end, int $rest): bool
     {
-        foreach ($busy as [$bStart, $bEnd]) {
-            if ($bStart->lessThan($end) && $bEnd->greaterThan($start)) {
+        foreach ($busy as [$bStart, $bEnd, $bRest]) {
+            if ($bStart->lessThanOrEqualTo($start)) {
+                $earlierEnd = $bEnd;
+                $earlierRest = $bRest;
+                $laterStart = $start;
+            } else {
+                $earlierEnd = $end;
+                $earlierRest = $rest;
+                $laterStart = $bStart;
+            }
+
+            $gapHours = $earlierEnd->diffInMinutes($laterStart, false) / 60;
+            if ($gapHours < $earlierRest) {
                 return true;
             }
         }

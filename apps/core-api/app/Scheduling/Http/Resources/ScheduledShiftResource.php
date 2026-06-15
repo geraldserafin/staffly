@@ -19,6 +19,7 @@ class ScheduledShiftResource extends JsonResource
             'name' => $this->name,
             'startAt' => $this->start_at,
             'endAt' => $this->end_at,
+            'restHoursAfter' => $this->rest_hours_after,
             'requirements' => ShiftRequirementResource::collection($this->whenLoaded('requirements')),
             'assignments' => ShiftAssignmentResource::collection($this->whenLoaded('assignments')),
         ];

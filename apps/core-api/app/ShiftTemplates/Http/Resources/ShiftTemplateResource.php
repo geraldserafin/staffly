@@ -19,6 +19,7 @@ class ShiftTemplateResource extends JsonResource
             'name' => $this->name,
             'startTime' => $this->start_time,
             'endTime' => $this->end_time,
+            'restHoursAfter' => $this->rest_hours_after,
             'recurrenceFrequency' => $this->recurrence_frequency,
             'recurrenceDays' => $this->recurrence_days,
             'requirements' => ShiftTemplateRequirementResource::collection($this->whenLoaded('requirements')),

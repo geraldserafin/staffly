@@ -72,6 +72,22 @@ def test_no_double_booking_on_overlapping_shifts():
     assert len(res.diagnostics["unfilled"]) == 1
 
 
+def test_rest_between_shifts():
+    # Two adjacent shifts; the first requires 11h rest -> a member can't do both.
+    early = Shift(id="early", startAt="2026-06-15T09:00:00", endAt="2026-06-15T17:00:00",
+                  restHoursAfter=11, requirements=[Requirement(type="headcount", skillId="cook", count=1)])
+    late = Shift(id="late", startAt="2026-06-15T17:00:00", endAt="2026-06-15T21:00:00",
+                 requirements=[Requirement(type="headcount", skillId="cook", count=1)])
+    req = SolveRequest(
+        scheduleId="s",
+        shifts=[early, late],
+        members=[Member(id="m1", skills=["cook"], eligibleShiftIds=["early", "late"])],
+    )
+    res = solve_schedule(req)
+    assert len(res.assignments) == 1
+    assert len(res.diagnostics["unfilled"]) == 1
+
+
 def test_locked_assignment_is_kept():
     req = SolveRequest(
         scheduleId="s",

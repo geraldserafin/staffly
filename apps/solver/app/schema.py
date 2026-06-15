@@ -15,6 +15,7 @@ class Shift(BaseModel):
     id: str
     startAt: str  # ISO 8601
     endAt: str
+    restHoursAfter: int | None = None  # rest required before the member's next shift
     requirements: list[Requirement] = []
 
 

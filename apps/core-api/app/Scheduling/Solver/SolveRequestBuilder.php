@@ -33,10 +33,15 @@ class SolveRequestBuilder
         $periodStart = $schedule->start_date->copy()->startOfDay();
         $periodEnd = $schedule->end_date->copy()->endOfDay();
 
+        $rule = (new TeamRule)->newQuery()->where('team_id', $team->getKey())->first();
+        $defaultRest = $rule?->min_rest_hours;
+
         $shifts = $schedule->shifts->map(fn ($shift) => [
             'id' => $shift->id,
             'startAt' => $shift->start_at->toIso8601String(),
             'endAt' => $shift->end_at->toIso8601String(),
+            // Per-shift rest overrides the team default; null = no rest constraint.
+            'restHoursAfter' => $shift->rest_hours_after ?? $defaultRest,
             'requirements' => $shift->requirements->map(fn ($requirement) => [
                 'type' => $requirement->type->value,
                 'skillId' => $requirement->skill_id,
@@ -82,8 +87,6 @@ class SolveRequestBuilder
                 'shiftId' => $assignment->scheduled_shift_id,
                 'memberId' => $assignment->member_id,
             ])->all();
-
-        $rule = (new TeamRule)->newQuery()->where('team_id', $team->getKey())->first();
 
         return [
             'scheduleId' => $schedule->id,

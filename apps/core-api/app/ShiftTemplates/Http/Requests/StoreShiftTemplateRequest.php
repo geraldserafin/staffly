@@ -26,6 +26,7 @@ class StoreShiftTemplateRequest extends FormRequest
             // Times only (H:i). end before start is allowed = overnight shift.
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i'],
+            'rest_hours_after' => ['nullable', 'integer', 'min:0'],
             'team_id' => [
                 'nullable',
                 'uuid',
