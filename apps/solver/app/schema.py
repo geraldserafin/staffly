@@ -15,15 +15,24 @@ class Shift(BaseModel):
     id: str
     startAt: str  # ISO 8601
     endAt: str
+    category: str | None = None  # e.g. "day"/"night" — matched by preferred_shift_type
     restHoursAfter: int | None = None  # rest required before the member's next shift
     requirements: list[Requirement] = []
 
 
+class Preference(BaseModel):
+    type: str
+    params: dict = {}
+    weight: int = 3
+    effectiveHard: bool = False
+
+
 class Member(BaseModel):
     id: str
+    priority: int = 1
     skills: list[str] = []
-    maxHoursPerWeek: int | None = None
     eligibleShiftIds: list[str] = []
+    preferences: list[Preference] = []
 
 
 class Lock(BaseModel):
@@ -39,10 +48,12 @@ class Rules(BaseModel):
 
 class SolveRequest(BaseModel):
     scheduleId: str
+    payrollPeriod: str = "month"  # week | biweekly | month
     shifts: list[Shift] = []
     members: list[Member] = []
     locked: list[Lock] = []
     rules: Rules = Rules()
+    objective: dict = {}  # { "lambda": 0..1 equity dial }
 
 
 class Assignment(BaseModel):

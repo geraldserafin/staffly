@@ -17,6 +17,7 @@ class ShiftTemplateResource extends JsonResource
             'organizationId' => $this->organization_id,
             'teamId' => $this->team_id,
             'name' => $this->name,
+            'category' => $this->category,
             'startTime' => $this->start_time,
             'endTime' => $this->end_time,
             'restHoursAfter' => $this->rest_hours_after,

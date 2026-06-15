@@ -21,6 +21,7 @@ class UpdateShiftTemplateRequest extends FormRequest
     {
         return [
             'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'category' => ['sometimes', 'nullable', 'string', 'max:255'],
             'start_time' => ['sometimes', 'required', 'date_format:H:i'],
             'end_time' => ['sometimes', 'required', 'date_format:H:i'],
             'rest_hours_after' => ['sometimes', 'nullable', 'integer', 'min:0'],

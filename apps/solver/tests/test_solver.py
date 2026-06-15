@@ -1,10 +1,11 @@
 """Solver tests. Run from apps/solver:  python -m pytest  (or  python tests/test_solver.py)."""
 
-from app.schema import Lock, Member, Requirement, Shift, SolveRequest
+from app.schema import Lock, Member, Preference, Requirement, Shift, SolveRequest
 from app.solver import solve_schedule
 
-DAY = ("2026-06-15T09:00:00", "2026-06-15T17:00:00")
-EVENING = ("2026-06-15T16:00:00", "2026-06-16T00:30:00")  # overlaps DAY 16:00-17:00
+DAY = ("2026-06-15T09:00:00", "2026-06-15T17:00:00")          # Monday
+EVENING = ("2026-06-15T16:00:00", "2026-06-16T00:30:00")     # overlaps DAY 16:00-17:00
+SATURDAY = ("2026-06-20T09:00:00", "2026-06-20T17:00:00")
 
 
 def _shift(sid, window, reqs):
@@ -101,6 +102,37 @@ def test_locked_assignment_is_kept():
     res = solve_schedule(req)
     assert ("m1", "sh1") in {(a.memberId, a.shiftId) for a in res.assignments}
     assert len(res.assignments) == 2
+
+
+def test_soft_preference_steers_choice():
+    # Saturday shift, one slot, two cooks; m1 dislikes weekends -> m2 chosen.
+    req = SolveRequest(
+        scheduleId="s",
+        shifts=[_shift("sat", SATURDAY, [Requirement(type="headcount", skillId="cook", count=1)])],
+        members=[
+            Member(id="m1", skills=["cook"], eligibleShiftIds=["sat"],
+                   preferences=[Preference(type="weekend", params={"mode": "avoid"}, weight=5)]),
+            Member(id="m2", skills=["cook"], eligibleShiftIds=["sat"]),
+        ],
+    )
+    res = solve_schedule(req)
+    assert {a.memberId for a in res.assignments} == {"m2"}
+
+
+def test_hard_preference_forbids_assignment():
+    # m1's only candidate, but hard "days off Monday" -> shift left unfilled.
+    req = SolveRequest(
+        scheduleId="s",
+        shifts=[_shift("mon", DAY, [Requirement(type="headcount", skillId="cook", count=1)])],
+        members=[
+            Member(id="m1", skills=["cook"], eligibleShiftIds=["mon"],
+                   preferences=[Preference(type="preferred_days_off", params={"days": [1]},
+                                           weight=3, effectiveHard=True)]),
+        ],
+    )
+    res = solve_schedule(req)
+    assert res.assignments == []
+    assert len(res.diagnostics["unfilled"]) == 1
 
 
 if __name__ == "__main__":

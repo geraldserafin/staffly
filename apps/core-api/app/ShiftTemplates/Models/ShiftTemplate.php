@@ -18,6 +18,7 @@ class ShiftTemplate extends Model
 
     protected $fillable = [
         'name',
+        'category',
         'start_time',
         'end_time',
         'rest_hours_after',

@@ -18,6 +18,7 @@ class StoreShiftRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
+            'category' => ['nullable', 'string', 'max:255'],
             'start_at' => ['required', 'date'],
             'end_at' => ['required', 'date', 'after:start_at'],
             'rest_hours_after' => ['nullable', 'integer', 'min:0'],

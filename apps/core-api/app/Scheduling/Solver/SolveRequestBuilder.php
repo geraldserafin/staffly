@@ -3,6 +3,7 @@
 namespace App\Scheduling\Solver;
 
 use App\Availability\Services\MemberAvailabilityResolver;
+use App\Preferences\Models\MemberPreference;
 use App\Scheduling\Enums\ScheduleStatus;
 use App\Scheduling\Models\Schedule;
 use App\Scheduling\Models\ShiftAssignment;
@@ -27,7 +28,7 @@ class SolveRequestBuilder
      */
     public function build(Schedule $schedule): array
     {
-        $schedule->loadMissing(['team', 'shifts.requirements']);
+        $schedule->loadMissing(['team.organization', 'shifts.requirements']);
         $team = $schedule->team;
 
         $periodStart = $schedule->start_date->copy()->startOfDay();
@@ -40,6 +41,7 @@ class SolveRequestBuilder
             'id' => $shift->id,
             'startAt' => $shift->start_at->toIso8601String(),
             'endAt' => $shift->end_at->toIso8601String(),
+            'category' => $shift->category,
             // Per-shift rest overrides the team default; null = no rest constraint.
             'restHoursAfter' => $shift->rest_hours_after ?? $defaultRest,
             'requirements' => $shift->requirements->map(fn ($requirement) => [
@@ -71,11 +73,22 @@ class SolveRequestBuilder
                 return true;
             })->pluck('id')->values()->all();
 
+            $preferences = (new MemberPreference)->newQuery()
+                ->where('member_id', $member->getKey())
+                ->get()
+                ->map(fn ($preference) => [
+                    'type' => $preference->type->value,
+                    'params' => $preference->params ?? [],
+                    'weight' => $preference->weight,
+                    'effectiveHard' => $preference->isEffectiveHard(),
+                ])->all();
+
             return [
                 'id' => $member->id,
+                'priority' => $member->priority,
                 'skills' => $skills,
-                'maxHoursPerWeek' => $member->max_hours_per_week,
                 'eligibleShiftIds' => $eligible,
+                'preferences' => $preferences,
             ];
         })->all();
 
@@ -90,6 +103,7 @@ class SolveRequestBuilder
 
         return [
             'scheduleId' => $schedule->id,
+            'payrollPeriod' => $team->organization->payroll_period->value,
             'shifts' => $shifts,
             'members' => $members,
             'locked' => $locked,
@@ -97,6 +111,9 @@ class SolveRequestBuilder
                 'minRestHours' => $rule?->min_rest_hours,
                 'maxHoursPerWeek' => $rule?->max_hours_per_week,
                 'maxConsecutiveDays' => $rule?->max_consecutive_days,
+            ],
+            'objective' => [
+                'lambda' => (float) ($schedule->weights['lambda'] ?? 0.3),
             ],
         ];
     }

@@ -19,8 +19,8 @@ trait ValidatesPreferenceParams
             PreferenceType::PreferredShiftType->value => (empty($params['type']) || ! is_string($params['type']))
                 ? $fail('preferred_shift_type requires params.type (string).') : null,
 
-            PreferenceType::MonthlyHoursTarget->value => (! isset($params['target']) || ! is_int($params['target']) || $params['target'] < 1)
-                ? $fail('monthly_hours_target requires params.target (positive integer).') : null,
+            PreferenceType::HoursTarget->value => (! isset($params['target']) || ! is_int($params['target']) || $params['target'] < 1)
+                ? $fail('hours_target requires params.target (positive integer).') : null,
 
             PreferenceType::Weekend->value => (! in_array($params['mode'] ?? null, ['prefer', 'avoid'], true))
                 ? $fail('weekend requires params.mode of prefer|avoid.') : null,
