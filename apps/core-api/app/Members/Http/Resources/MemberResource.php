@@ -17,7 +17,6 @@ class MemberResource extends JsonResource
             'organizationId' => $this->organization_id,
             'name' => $this->name,
             'priority' => $this->priority,
-            'maxHoursPerWeek' => $this->max_hours_per_week,
             'createdAt' => $this->created_at,
             'updatedAt' => $this->updated_at,
         ];

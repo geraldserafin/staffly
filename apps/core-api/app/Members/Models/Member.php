@@ -16,7 +16,6 @@ class Member extends Model
     protected $fillable = [
         'name',
         'priority',
-        'max_hours_per_week',
     ];
 
     /**
@@ -26,7 +25,6 @@ class Member extends Model
     {
         return [
             'priority' => 'integer',
-            'max_hours_per_week' => 'integer',
         ];
     }
 

@@ -20,7 +20,6 @@ class UpdateMemberRequest extends FormRequest
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             // Manager-set seniority tier.
             'priority' => ['sometimes', 'integer', 'min:1'],
-            'max_hours_per_week' => ['sometimes', 'nullable', 'integer', 'min:1'],
         ];
     }
 }
