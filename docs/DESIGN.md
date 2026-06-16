@@ -36,14 +36,18 @@ Monorepo under `apps/`:
 |-----|-------|------|
 | `apps/core-api` | Laravel 13, PHP 8.5, PostgreSQL | JSON API, domain model, orchestration |
 | `apps/solver` | Python, FastAPI, OR-Tools CP-SAT | Stateless optimizer service |
+| `apps/web` | Angular 20, standalone + signals, pnpm | Frontend (first iteration) |
 
 - **core-api** is API-only — no Blade, no Vite/npm; all HTML stripped. Every
   response is JSON, including errors (`shouldRenderJsonWhen(fn () => true)` +
   explicit `NotFoundHttpException`/`HttpExceptionInterface` renders so even a 404
   is `{"message":"Not Found"}` with no stack trace leaking in prod).
 - **Routing has no `/api` prefix** — the whole app *is* the API (`apiPrefix: ''`).
-- `devenv.nix` provides PHP, Node (tooling), PostgreSQL, and a Python venv
-  (ortools/fastapi/uvicorn). Frontend (Angular) is planned, not built.
+- `devenv.nix` provides PHP, Node + pnpm, PostgreSQL, and a Python venv
+  (ortools/fastapi/uvicorn). The Angular frontend (`apps/web`) is a first
+  iteration: vertical-slice architecture (`core/` typed Api wrapper + models;
+  `features/<slice>/` service + components), unstyled, covering the full API.
+  Dev: `pnpm start` on :4200, CORS-allowed by core-api (`config/cors.php`).
 - VCS: git (a `jj` workflow was considered). Commits are small and per-feature.
 
 ### The two services and their boundary
@@ -511,7 +515,9 @@ global fallback.
 - **`STAFF_WEIGHT` / integer-scaling robustness** — tuned for typical instance
   sizes; revisit bounds for very large orgs to guarantee staffing dominance and
   avoid int64 pressure.
-- **Frontend (Angular)** — not started; the API is the contract.
+- **Frontend (Angular)** — first iteration built (`apps/web`): clickable coverage
+  of every endpoint, unstyled. Next: real UI/UX, auth-gated views, error/loading
+  states, and replacing the dev CORS origin with same-origin prod serving.
 - **Notifications, audit** — not started.
 - **Reporting/analytics** — `GET /schedules/{id}/insights` (`ScheduleInsights`) is
   built: per-member workload (assigned shifts + hours, **live** from current
