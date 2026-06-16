@@ -16,6 +16,7 @@ class SolveRun extends Model
     protected $fillable = [
         'status',
         'diagnostics',
+        'result_snapshot',
     ];
 
     /**
@@ -26,6 +27,7 @@ class SolveRun extends Model
         return [
             'status' => SolveStatus::class,
             'diagnostics' => 'array',
+            'result_snapshot' => 'array',
         ];
     }
 

@@ -233,9 +233,11 @@ The core slice. `schedules`, `scheduled_shifts`, `shift_requirements`,
   `max_consecutive_days`. Only `min_rest_hours` is enforced in v1 (as the global
   rest fallback). The other two are modeled but unused for now (deliberate scope
   cut).
-- **SolveRun**: `schedule_id, status, diagnostics(jsonb)`. Tracks a solve
-  attempt + its diagnostics (objective, unfilled, uncovered). Not the assignment
-  store — assignments are normalized rows; SolveRun is the job/diagnostics record.
+- **SolveRun**: `schedule_id, status, diagnostics(jsonb), result_snapshot(jsonb)`.
+  Tracks a solve attempt + its diagnostics (objective, unfilled, uncovered) and
+  retains the assignments it produced (`result_snapshot` = `[{shiftId, memberId}]`)
+  so runs can be compared and a chosen one re-applied. Still not the live
+  assignment store — those are normalized rows; the snapshot is a retained copy.
 
 ### Availability
 `availabilities` (member-level), `availability_requests`,
@@ -335,6 +337,12 @@ hard_approved`. Unique `(member_id, type)`.
   (~60 ms at the target scale). Locked assignments are still honored. Unlike the
   queued `POST /solve`, it never mutates the draft — explore freely, then commit
   via `/solve`.
+- **Compare / keep-best across runs**: every solve retains its result on the
+  `SolveRun` (`result_snapshot`) and applies it via the shared `ApplyAssignments`
+  (replace non-locked, keep locked). `GET /schedules/{id}/solve-runs` lists runs
+  (diagnostics + snapshot) to compare; `POST /solve-runs/{id}/apply` re-applies a
+  chosen run's snapshot — pick the best of several, or revert after a re-solve.
+  Applying a run with no snapshot (e.g. pending/failed) is a 422.
 
 > Gotcha: `SOLVER_DRIVER=http php artisan serve` does **not** work — `artisan
 > serve` spawns a child that re-reads `.env`. Set it in `.env`.
@@ -464,9 +472,6 @@ global fallback.
 - **`avoid_fast_rotation` + soft `max_consecutive_days`** — penalties exist in the
   catalog; `avoid_fast_rotation` needs ordered night→day adjacency semantics on
   `category`; `max_consecutive_days` needs run-length vars.
-- **Compare/keep-best across solve runs** — retain each run's result
-  (`SolveRun.result_snapshot`) to hold runs side-by-side; today re-solve
-  overwrites in place.
 - **Contract templates** — reusable employment-limit templates that populate
   per-member fields (an authoring convenience over the same data).
 - **Auth & `user_id` on members** — one user ↔ many members across orgs; managers

@@ -17,6 +17,7 @@ class SolveRunResource extends JsonResource
             'scheduleId' => $this->schedule_id,
             'status' => $this->status,
             'diagnostics' => $this->diagnostics,
+            'resultSnapshot' => $this->result_snapshot,
             'createdAt' => $this->created_at,
             'updatedAt' => $this->updated_at,
         ];
