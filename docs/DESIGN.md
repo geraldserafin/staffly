@@ -509,5 +509,12 @@ global fallback.
   sizes; revisit bounds for very large orgs to guarantee staffing dominance and
   avoid int64 pressure.
 - **Frontend (Angular)** — not started; the API is the contract.
-- **Notifications, audit, reporting/analytics** — per-team labor cost, who's
-  unhappy and why (the solver already surfaces diagnostics for this).
+- **Notifications, audit** — not started.
+- **Reporting/analytics** — `GET /schedules/{id}/insights` (`ScheduleInsights`) is
+  built: per-member workload (assigned shifts + hours, **live** from current
+  assignments), **staffing gaps** (headcount shortfalls + uncovered coverage
+  skills, computed live against member skills), and **fairness** (per-member
+  dissatisfaction + total/max) snapshotted from the latest succeeded `SolveRun`'s
+  diagnostics — solver-computed, so it can be stale after manual edits (flagged
+  via `fairness.fromLastSolve`). Still open: per-team labor **cost** (needs pay
+  rates, not yet modeled), trends across periods.

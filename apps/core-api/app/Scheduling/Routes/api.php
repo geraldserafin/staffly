@@ -24,6 +24,7 @@ Route::post('schedules/{schedule}/archive', [ScheduleController::class, 'archive
 Route::post('schedules/{schedule}/solve', [SolveController::class, 'solve']);
 Route::post('schedules/{schedule}/solve/preview', [SolveController::class, 'preview']);
 Route::get('schedules/{schedule}/solve-runs', [SolveController::class, 'runs']);
+Route::get('schedules/{schedule}/insights', [SolveController::class, 'insights']);
 Route::get('solve-runs/{solveRun}', [SolveController::class, 'show']);
 Route::post('solve-runs/{solveRun}/apply', [SolveController::class, 'apply']);
 

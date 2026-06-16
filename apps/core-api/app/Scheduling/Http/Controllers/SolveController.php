@@ -6,6 +6,7 @@ use App\Scheduling\Actions\ApplyRun;
 use App\Scheduling\Actions\ListScheduleRuns;
 use App\Scheduling\Actions\PreviewSolve;
 use App\Scheduling\Actions\QueueSolve;
+use App\Scheduling\Actions\ScheduleInsights;
 use App\Scheduling\Http\Requests\PreviewSolveRequest;
 use App\Scheduling\Http\Resources\SolveRunResource;
 use App\Scheduling\Models\Schedule;
@@ -41,6 +42,11 @@ class SolveController
     public function runs(Schedule $schedule, ListScheduleRuns $action): AnonymousResourceCollection
     {
         return SolveRunResource::collection($action->handle($schedule));
+    }
+
+    public function insights(Schedule $schedule, ScheduleInsights $action): JsonResponse
+    {
+        return new JsonResponse($action->handle($schedule));
     }
 
     public function apply(SolveRun $solveRun, ApplyRun $action): SolveRunResource
