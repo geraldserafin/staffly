@@ -9,7 +9,7 @@ per-member weight normalisation, seniority priority, and a lambda equity dial.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from ortools.sat.python import cp_model
 
@@ -138,7 +138,7 @@ def solve_schedule(req: SolveRequest) -> SolveResponse:
     member_wd = {}  # member id -> linear expression
     prior = {m.id: max(0, m.priorDissatisfaction) for m in req.members}
     for m in req.members:
-        wd = _member_dissatisfaction(model, m, works, dur, bucket, weekend, weekday, category)
+        wd = _member_dissatisfaction(model, m, works, dur, bucket, weekend, weekday, category, start)
         if wd is not None:
             member_wd[m.id] = wd
 
@@ -207,7 +207,7 @@ def _hard_forbids(pref, sid, category, weekday, weekend) -> bool:
     return False
 
 
-def _member_dissatisfaction(model, member: Member, works, dur, bucket, weekend, weekday, category):
+def _member_dissatisfaction(model, member: Member, works, dur, bucket, weekend, weekday, category, start):
     """Linear expr = priority * Σ_p (normalised weight · normalised penalty). None if no soft prefs."""
     soft = [p for p in member.preferences if not p.effectiveHard]
     total_weight = sum(p.weight for p in soft)
@@ -218,7 +218,7 @@ def _member_dissatisfaction(model, member: Member, works, dur, bucket, weekend, 
     terms = []
 
     for pref in soft:
-        raw, norm = _penalty(model, pref, member, my_shifts, works, dur, bucket, weekend, weekday, category)
+        raw, norm = _penalty(model, pref, member, my_shifts, works, dur, bucket, weekend, weekday, category, start)
         if raw is None or norm <= 0:
             continue
         # coef folds priority, normalised weight and the per-type normaliser.
@@ -229,7 +229,7 @@ def _member_dissatisfaction(model, member: Member, works, dur, bucket, weekend, 
     return sum(terms) if terms else None
 
 
-def _penalty(model, pref, member, my_shifts, works, dur, bucket, weekend, weekday, category):
+def _penalty(model, pref, member, my_shifts, works, dur, bucket, weekend, weekday, category, start):
     """Return (raw_penalty_expr, normaliser) — raw is linear in the member's works vars."""
     p = pref.params
     w = lambda sid: works[(member.id, sid)]  # noqa: E731
@@ -265,4 +265,87 @@ def _penalty(model, pref, member, my_shifts, works, dur, bucket, weekend, weekda
             devs.append(dev)
         return (sum(devs), target)
 
+    if pref.type == "max_consecutive_days":
+        cap = p.get("max") or 0
+        if cap < 1 or not my_shifts:
+            return (None, 0)
+        worked = _worked_by_day(model, member, my_shifts, works, start)
+        grid = _calendar_grid(worked.keys())
+        window = cap + 1
+        pens = []
+        for i in range(len(grid) - window + 1):
+            days = grid[i:i + window]
+            # A gap day (no shift) can never be worked, so that window can't
+            # exceed the cap — only count windows that are fully schedulable.
+            if any(d not in worked for d in days):
+                continue
+            pen = model.NewBoolVar(f"consec_{member.id}_{i}")
+            model.Add(pen >= sum(worked[d] for d in days) - cap)
+            pens.append(pen)
+        return (sum(pens), len(pens)) if pens else (None, 0)
+
+    if pref.type == "avoid_fast_rotation":
+        if not my_shifts:
+            return (None, 0)
+        worked_cat = _worked_by_day_category(model, member, my_shifts, works, start, category)
+        cats_on = {}
+        for (day, cat) in worked_cat:
+            cats_on.setdefault(day, []).append(cat)
+        pens, pairs = [], 0
+        for day in sorted(cats_on):
+            nxt = day + timedelta(days=1)
+            if nxt not in cats_on:
+                continue  # not adjacent calendar days -> no rotation between them
+            pairs += 1
+            for ca in cats_on[day]:
+                for cb in cats_on[nxt]:
+                    if ca == cb:
+                        continue  # same shift type two days running is not a rotation
+                    pen = model.NewBoolVar(f"rot_{member.id}_{day}_{ca}_{cb}")
+                    model.Add(pen >= worked_cat[(day, ca)] + worked_cat[(nxt, cb)] - 1)
+                    pens.append(pen)
+        return (sum(pens), pairs) if pens else (None, 0)
+
     return (None, 0)
+
+
+def _worked_by_day(model, member, my_shifts, works, start):
+    """date -> Bool that is 1 iff the member works any shift starting that day."""
+    by_day: dict = {}
+    for sid in my_shifts:
+        by_day.setdefault(start[sid].date(), []).append(sid)
+    worked = {}
+    for day, sids in by_day.items():
+        v = model.NewBoolVar(f"worked_{member.id}_{day}")
+        for sid in sids:
+            model.Add(v >= works[(member.id, sid)])
+        model.Add(v <= sum(works[(member.id, sid)] for sid in sids))
+        worked[day] = v
+    return worked
+
+
+def _worked_by_day_category(model, member, my_shifts, works, start, category):
+    """(date, category) -> Bool that is 1 iff the member works that category that day."""
+    by_key: dict = {}
+    for sid in my_shifts:
+        by_key.setdefault((start[sid].date(), category[sid]), []).append(sid)
+    worked = {}
+    for key, sids in by_key.items():
+        v = model.NewBoolVar(f"wc_{member.id}_{key[0]}_{key[1]}")
+        for sid in sids:
+            model.Add(v >= works[(member.id, sid)])
+        model.Add(v <= sum(works[(member.id, sid)] for sid in sids))
+        worked[key] = v
+    return worked
+
+
+def _calendar_grid(days):
+    """All calendar dates from the earliest to latest worked day, inclusive."""
+    days = sorted(days)
+    if not days:
+        return []
+    grid, d = [], days[0]
+    while d <= days[-1]:
+        grid.append(d)
+        d += timedelta(days=1)
+    return grid

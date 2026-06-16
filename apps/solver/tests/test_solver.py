@@ -171,6 +171,82 @@ def test_history_bias_spares_the_previously_worst_off():
     assert {a.memberId for a in solve_schedule(build(0, 500_000)).assignments} == {"m1"}
 
 
+def _cook():
+    return [Requirement(type="headcount", skillId="cook", count=1)]
+
+
+def _day_shift(sid, date, cat="day"):
+    return Shift(id=sid, startAt=f"{date}T09:00:00", endAt=f"{date}T17:00:00",
+                 category=cat, requirements=_cook())
+
+
+def test_max_consecutive_days_penalty_reported_when_unavoidable():
+    # Sole cook, two consecutive single-cook days, cap 1 -> staffing forces both,
+    # the violation surfaces as dissatisfaction.
+    req = SolveRequest(
+        scheduleId="s",
+        shifts=[_day_shift("mon", "2026-06-15"), _day_shift("tue", "2026-06-16")],
+        members=[Member(id="m1", skills=["cook"], eligibleShiftIds=["mon", "tue"],
+                        preferences=[Preference(type="max_consecutive_days", params={"max": 1}, weight=5)])],
+    )
+    res = solve_schedule(req)
+    assert len(res.assignments) == 2
+    assert res.diagnostics["memberDissatisfaction"]["m1"] > 0
+
+
+def test_max_consecutive_days_steers_to_break_runs():
+    # 3 consecutive single-cook days, two cooks; m1 capped at 1 -> m1 never lands
+    # on two consecutive days (m2 absorbs the run).
+    req = SolveRequest(
+        scheduleId="s",
+        shifts=[_day_shift("mon", "2026-06-15"), _day_shift("tue", "2026-06-16"), _day_shift("wed", "2026-06-17")],
+        members=[
+            Member(id="m1", skills=["cook"], eligibleShiftIds=["mon", "tue", "wed"],
+                   preferences=[Preference(type="max_consecutive_days", params={"max": 1}, weight=5)]),
+            Member(id="m2", skills=["cook"], eligibleShiftIds=["mon", "tue", "wed"]),
+        ],
+    )
+    res = solve_schedule(req)
+    assert len(res.assignments) == 3
+    order = {"mon": 0, "tue": 1, "wed": 2}
+    idx = sorted(order[a.shiftId] for a in res.assignments if a.memberId == "m1")
+    assert all(b - a > 1 for a, b in zip(idx, idx[1:]))
+
+
+def test_avoid_fast_rotation_penalty_reported_when_unavoidable():
+    # Sole cook works a day shift then a night shift next day -> rotation penalty.
+    night = Shift(id="tue", startAt="2026-06-16T17:00:00", endAt="2026-06-16T23:00:00",
+                  category="night", requirements=_cook())
+    req = SolveRequest(
+        scheduleId="s",
+        shifts=[_day_shift("mon", "2026-06-15"), night],
+        members=[Member(id="m1", skills=["cook"], eligibleShiftIds=["mon", "tue"],
+                        preferences=[Preference(type="avoid_fast_rotation", weight=5)])],
+    )
+    res = solve_schedule(req)
+    assert len(res.assignments) == 2
+    assert res.diagnostics["memberDissatisfaction"]["m1"] > 0
+
+
+def test_avoid_fast_rotation_steers_to_split_categories():
+    # A day shift and a next-day night shift, two cooks; m1 avoids rotation ->
+    # m1 does not take both.
+    night = Shift(id="tue", startAt="2026-06-16T17:00:00", endAt="2026-06-16T23:00:00",
+                  category="night", requirements=_cook())
+    req = SolveRequest(
+        scheduleId="s",
+        shifts=[_day_shift("mon", "2026-06-15"), night],
+        members=[
+            Member(id="m1", skills=["cook"], eligibleShiftIds=["mon", "tue"],
+                   preferences=[Preference(type="avoid_fast_rotation", weight=5)]),
+            Member(id="m2", skills=["cook"], eligibleShiftIds=["mon", "tue"]),
+        ],
+    )
+    res = solve_schedule(req)
+    m1 = {a.shiftId for a in res.assignments if a.memberId == "m1"}
+    assert m1 != {"mon", "tue"}
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_") and callable(fn):

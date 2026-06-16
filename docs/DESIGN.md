@@ -384,7 +384,21 @@ wnorm[m,p] = weight[m,p] / Σ_q weight[m,q]
   (fixed-point `SCALE=100000`), so the model is linear-integer and CP-SAT-friendly.
 
 **Penalties implemented:** `weekend`, `preferred_days_off`,
-`preferred_shift_type`, `hours_target`.
+`preferred_shift_type`, `hours_target`, `max_consecutive_days`,
+`avoid_fast_rotation`.
+- **`max_consecutive_days {max}`** — a per-day `worked[m,d]` bool (OR of the
+  member's shifts that day) over the calendar grid; each window of `max+1`
+  consecutive days contributes a 0/1 penalty when all are worked (windows
+  containing a gap day are skipped — they can never violate). Normaliser = number
+  of windows.
+- **`avoid_fast_rotation`** (no params) — penalises working **different**
+  categories on adjacent calendar days (e.g. day→night). A `worked[m,d,category]`
+  bool per day+category; for each adjacent day pair, a 0/1 penalty per
+  differing-category combination. Normaliser = number of adjacent worked-day
+  pairs. Same-category two days running is not a rotation.
+- Both are **soft-only** today: `_hard_forbids` can't express them as per-shift
+  vetoes, so an effective-hard request on these is a no-op (the per-shift hard
+  prefs — shift type, days off, weekend — remain the hard-capable ones).
 
 ### History-based fairness (built)
 Unfairness *rotates* across periods: last period's worst-off are favoured this
@@ -469,9 +483,6 @@ global fallback.
 ## 8. Next steps
 
 ### Established (designed, not built)
-- **`avoid_fast_rotation` + soft `max_consecutive_days`** — penalties exist in the
-  catalog; `avoid_fast_rotation` needs ordered night→day adjacency semantics on
-  `category`; `max_consecutive_days` needs run-length vars.
 - **Contract templates** — reusable employment-limit templates that populate
   per-member fields (an authoring convenience over the same data).
 - **Auth & `user_id` on members** — one user ↔ many members across orgs; managers
