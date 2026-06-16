@@ -4,6 +4,7 @@ namespace App\Organizations\Http\Controllers;
 
 use App\Organizations\Actions\CreateOrganization;
 use App\Organizations\Actions\DeleteOrganization;
+use App\Organizations\Actions\ListOrganizations;
 use App\Organizations\Actions\ShowOrganization;
 use App\Organizations\Actions\UpdateOrganization;
 use App\Organizations\Http\Requests\StoreOrganizationRequest;
@@ -11,10 +12,16 @@ use App\Organizations\Http\Requests\UpdateOrganizationRequest;
 use App\Organizations\Http\Resources\OrganizationResource;
 use App\Organizations\Models\Organization;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 
 class OrganizationController
 {
+    public function index(ListOrganizations $action): AnonymousResourceCollection
+    {
+        return OrganizationResource::collection($action->handle());
+    }
+
     public function store(StoreOrganizationRequest $request, CreateOrganization $action): JsonResponse
     {
         $organization = $action->handle($request->validated());
