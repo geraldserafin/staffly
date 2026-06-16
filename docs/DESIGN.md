@@ -319,9 +319,15 @@ hard_approved`. Unique `(member_id, type)`.
 - `http` — `HttpSolver` POSTs to the Python service (`SOLVER_URL`,
   `SOLVER_TIMEOUT`).
 - Swapping is one env var; nothing upstream changes.
-- Solve is **synchronous inside the request** today (real load → queue + SolveRun
-  polling, deferred). `SolveSchedule` writes assignments transactionally: wipe
-  non-locked, keep locked.
+- Solve is **asynchronous**: `POST /schedules/{id}/solve` (`QueueSolve`) records a
+  `pending` `SolveRun`, dispatches `SolveScheduleJob`, and returns **202** with the
+  run immediately. The job (one attempt, `tries=1`) flips the run to `running`,
+  then `SolveSchedule::execute` builds the request, solves, writes assignments
+  transactionally (wipe non-locked, keep locked), and marks `succeeded`/`failed`
+  with diagnostics. A killed worker is caught by the job's `failed()` so a run is
+  never stuck on `running`. Clients poll `GET /solve-runs/{id}`. Needs a queue
+  worker in prod (`QUEUE_CONNECTION=database`, `php artisan queue:work`); the test
+  suite uses `sync` so jobs run inline.
 
 > Gotcha: `SOLVER_DRIVER=http php artisan serve` does **not** work — `artisan
 > serve` spawns a child that re-reads `.env`. Set it in `.env`.
@@ -451,9 +457,17 @@ global fallback.
 - **`avoid_fast_rotation` + soft `max_consecutive_days`** — penalties exist in the
   catalog; `avoid_fast_rotation` needs ordered night→day adjacency semantics on
   `category`; `max_consecutive_days` needs run-length vars.
-- **Async solve** — queue the solve job + poll `SolveRun` status (currently
-  synchronous). The model already separates SolveRun (job/diagnostics) from
-  assignments.
+- **Live λ preview (dry-run solve)** — the manager scrubs the λ equity dial (and
+  potentially `priority`/weights) and sees the reshuffle + per-member
+  dissatisfaction **live**, before committing. Measured solve time makes this
+  interactive at the target scale: ~60 ms for 15 members / 1 week, ~110 ms for
+  2 weeks, ~675 ms at 30 members; it degrades past ~30 (50 members / 2 weeks pins
+  the 10 s cap and returns only *feasible*), so large orgs need a "still
+  optimizing…" affordance. Design: a **dry-run endpoint** reusing
+  `SolveRequestBuilder` + `Solver` that returns `{assignments, diagnostics}` for a
+  given λ **without writing assignments or creating a `SolveRun`**; the existing
+  `POST /solve` remains the persisting commit. Slider reads as *efficient ↔ fair*
+  (λ), distinct from the per-member seniority knob (`priority`).
 - **Compare/keep-best across solve runs** — retain each run's result
   (`SolveRun.result_snapshot`) to hold runs side-by-side; today re-solve
   overwrites in place.

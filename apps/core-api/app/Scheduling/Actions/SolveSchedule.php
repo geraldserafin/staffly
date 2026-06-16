@@ -12,6 +12,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
+/**
+ * Executes a previously-queued solve run: build the request, solve, and write
+ * the resulting assignments. Runs inside a queued job (see SolveScheduleJob);
+ * the pending SolveRun is created up front by QueueSolve so the request can
+ * return immediately while this happens out of band.
+ */
 class SolveSchedule
 {
     public function __construct(
@@ -19,14 +25,13 @@ class SolveSchedule
         private readonly Solver $solver,
     ) {}
 
-    public function handle(Schedule $schedule): SolveRun
+    public function execute(SolveRun $run): void
     {
-        $run = new SolveRun;
-        $run->status = SolveStatus::Pending;
-        $run->schedule()->associate($schedule);
+        $run->status = SolveStatus::Running;
         $run->save();
 
         try {
+            $schedule = $run->schedule;
             $request = $this->builder->build($schedule);
             $response = $this->solver->solve($request);
 
@@ -40,8 +45,6 @@ class SolveSchedule
         }
 
         $run->save();
-
-        return $run;
     }
 
     /**
