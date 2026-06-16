@@ -9,7 +9,7 @@ per-member weight normalisation, seniority priority, and a lambda equity dial.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from ortools.sat.python import cp_model
 
@@ -19,6 +19,11 @@ SOLVE_TIME_LIMIT_SECONDS = 10.0
 COVERAGE_PENALTY = 5
 SCALE = 100_000          # fixed-point scale for normalised penalties
 STAFF_WEIGHT = 10 ** 12  # staffing dominates preferences
+
+# Fixed Monday that defines the biweekly fortnight phase. Buckets are true 14-day
+# windows counted from here (contiguous, year-boundary-safe) rather than pairing
+# ISO weeks. A future org-level payroll anchor can replace this constant.
+BIWEEKLY_ANCHOR = date(2020, 1, 6)
 
 
 def _parse(ts: str) -> datetime:
@@ -30,7 +35,7 @@ def _bucket(dt: datetime, period: str) -> tuple:
     if period == "week":
         return (iso.year, iso.week)
     if period == "biweekly":
-        return (iso.year, iso.week // 2)
+        return ("biweekly", (dt.date() - BIWEEKLY_ANCHOR).days // 14)
     return (dt.year, dt.month)  # month
 
 

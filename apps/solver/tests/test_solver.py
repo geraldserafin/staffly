@@ -1,7 +1,9 @@
 """Solver tests. Run from apps/solver:  python -m pytest  (or  python tests/test_solver.py)."""
 
+from datetime import datetime, timedelta
+
 from app.schema import Lock, Member, Preference, Requirement, Shift, SolveRequest
-from app.solver import solve_schedule
+from app.solver import BIWEEKLY_ANCHOR, _bucket, solve_schedule
 
 DAY = ("2026-06-15T09:00:00", "2026-06-15T17:00:00")          # Monday
 EVENING = ("2026-06-15T16:00:00", "2026-06-16T00:30:00")     # overlaps DAY 16:00-17:00
@@ -245,6 +247,28 @@ def test_avoid_fast_rotation_steers_to_split_categories():
     res = solve_schedule(req)
     m1 = {a.shiftId for a in res.assignments if a.memberId == "m1"}
     assert m1 != {"mon", "tue"}
+
+
+def test_biweekly_buckets_are_contiguous_fortnights_from_the_anchor():
+    base = datetime.combine(BIWEEKLY_ANCHOR, datetime.min.time())
+
+    def idx(days):
+        return _bucket(base + timedelta(days=days), "biweekly")[1]
+
+    assert idx(0) == 0
+    assert idx(13) == 0      # last day of the first fortnight
+    assert idx(14) == 1      # next fortnight starts cleanly
+    assert idx(27) == 1
+    assert idx(28) == 2
+    assert idx(-1) == -1     # the day before the anchor is the previous fortnight
+
+
+def test_biweekly_does_not_split_a_fortnight_across_a_year_boundary():
+    # Two dates 6 days apart spanning new year land in the same fortnight,
+    # unlike the old (year, isoweek//2) scheme which reset at the boundary.
+    a = datetime(2025, 12, 30)
+    b = datetime(2026, 1, 5)
+    assert _bucket(a, "biweekly") == _bucket(b, "biweekly")
 
 
 if __name__ == "__main__":

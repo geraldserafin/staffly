@@ -503,8 +503,11 @@ global fallback.
   convention covers most of it.
 - **Partial attendance** — per-assignment `start_at/end_at` (leave early / arrive
   late). Deferred.
-- **Biweekly payroll bucketing** — currently approximate (`isoweek // 2`); define
-  a proper anchor.
+- **Biweekly payroll bucketing** — *done*: true 14-day fortnights counted from a
+  fixed Monday anchor (`BIWEEKLY_ANCHOR = 2020-01-06`), replacing the buggy
+  `isoweek // 2` (which mis-paired weeks and reset at year boundaries).
+  Still open: making the anchor **org-configurable** to match a real payroll
+  start (the constant defines only the phase today).
 - **`STAFF_WEIGHT` / integer-scaling robustness** — tuned for typical instance
   sizes; revisit bounds for very large orgs to guarantee staffing dominance and
   avoid int64 pressure.
