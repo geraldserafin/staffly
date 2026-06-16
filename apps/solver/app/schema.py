@@ -33,6 +33,9 @@ class Member(BaseModel):
     skills: list[str] = []
     eligibleShiftIds: list[str] = []
     preferences: list[Preference] = []
+    # Decayed dissatisfaction carried from recent published periods (history-based
+    # fairness). Same fixed-point scale as the per-period WD[m] the solver builds.
+    priorDissatisfaction: int = 0
 
 
 class Lock(BaseModel):

@@ -203,7 +203,7 @@ cross-entity checks here (e.g. assignment double-book overlap, same-org guards).
 
 ### Scheduling
 The core slice. `schedules`, `scheduled_shifts`, `shift_requirements`,
-`shift_assignments`, `team_rules`, `solve_runs`.
+`shift_assignments`, `team_rules`, `solve_runs`, `member_satisfaction`.
 
 - **Schedule** `id, team_id, name, start_date, end_date, status(draft|published|
   archived), weights(jsonb)`. The schedule *is* the working copy — `status=draft`
@@ -295,13 +295,15 @@ hard_approved`. Unique `(member_id, type)`.
   shifts:  [{ id, startAt, endAt, category, restHoursAfter,
               requirements: [{type, skillId, count}] }],
   members: [{ id, priority, skills:[skillId], eligibleShiftIds:[shiftId],
-              preferences: [{type, params, weight, effectiveHard}] }],
+              preferences: [{type, params, weight, effectiveHard}],
+              priorDissatisfaction }],
   locked:  [{shiftId, memberId}],
   rules:   {minRestHours, maxHoursPerWeek, maxConsecutiveDays},
   objective: { lambda } }
 // response
 { assignments: [{shiftId, memberId}],
-  diagnostics: { solver, status, objective, unfilled[], uncovered[] } }
+  diagnostics: { solver, status, objective, unfilled[], uncovered[],
+                 memberDissatisfaction{} } }
 ```
 - **Eligibility is precomputed in PHP** — `eligibleShiftIds` already folds in
   availability (resolver) + cross-team prior published commitments. The solver
@@ -362,6 +364,26 @@ wnorm[m,p] = weight[m,p] / Σ_q weight[m,q]
 
 **Penalties implemented:** `weekend`, `preferred_days_off`,
 `preferred_shift_type`, `hours_target`.
+
+### History-based fairness (built)
+Unfairness *rotates* across periods: last period's worst-off are favoured this
+period. The mechanism reuses the equity machinery:
+- The solver already computes per-member dissatisfaction `WD[m]`. It now **emits**
+  the realised value in `diagnostics.memberDissatisfaction {memberId: value}`.
+- On **publish**, core-api snapshots that map (from the schedule's latest
+  succeeded `SolveRun`) into a **`member_satisfaction`** record — the per-member,
+  per-period history row (`member_id, team_id, schedule_id (snapshot,
+  nullOnDelete), period_start/end, dissatisfaction`). Idempotent per
+  `(schedule, member)`.
+- `SolveRequestBuilder` feeds each member a `priorDissatisfaction` = **decayed sum**
+  of recent published periods of the same team (`config('solver.fairness')`:
+  `history_window` default 3, `decay` default 0.5; most recent full weight, older
+  faded). Only periods ending **before** this schedule's start count.
+- The equity term changes from `worst ≥ WD[m]` to `worst ≥ prior[m] + WD[m]`, so
+  the λ dial now protects the **cumulative** worst-off. Same fixed-point units —
+  no rescaling. The utilitarian `Σ WD` term is unchanged (prior is constant
+  there). The greedy stub emits no dissatisfaction, so history is a real-solver
+  feature; publishing after a stub solve records nothing.
 
 ---
 
@@ -426,10 +448,6 @@ global fallback.
 ## 8. Next steps
 
 ### Established (designed, not built)
-- **History-based fairness** — feed prior-period satisfaction into the objective
-  so unfairness *rotates* across months (you did nights last month → days this
-  month). Reduces manual month-to-month tweaking. Needs a per-member,
-  per-period satisfaction record.
 - **`avoid_fast_rotation` + soft `max_consecutive_days`** — penalties exist in the
   catalog; `avoid_fast_rotation` needs ordered night→day adjacency semantics on
   `category`; `max_consecutive_days` needs run-length vars.

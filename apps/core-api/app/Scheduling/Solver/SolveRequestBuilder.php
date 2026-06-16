@@ -5,6 +5,7 @@ namespace App\Scheduling\Solver;
 use App\Availability\Services\MemberAvailabilityResolver;
 use App\Preferences\Models\MemberPreference;
 use App\Scheduling\Enums\ScheduleStatus;
+use App\Scheduling\Models\MemberSatisfaction;
 use App\Scheduling\Models\Schedule;
 use App\Scheduling\Models\ShiftAssignment;
 use App\Scheduling\Models\TeamRule;
@@ -89,6 +90,7 @@ class SolveRequestBuilder
                 'skills' => $skills,
                 'eligibleShiftIds' => $eligible,
                 'preferences' => $preferences,
+                'priorDissatisfaction' => $this->priorDissatisfaction($member->getKey(), $schedule),
             ];
         })->all();
 
@@ -138,5 +140,37 @@ class SolveRequestBuilder
             ->get()
             ->map(fn ($assignment) => [$assignment->shift->start_at, $assignment->shift->end_at])
             ->all();
+    }
+
+    /**
+     * Decayed sum of this member's realised dissatisfaction over recent published
+     * periods of the same team — the history bias that makes unfairness rotate.
+     * Most recent period counts fully; each older one is multiplied by `decay`
+     * again, up to `history_window` periods back. Periods on/after this schedule
+     * are ignored (only the past biases the present).
+     */
+    private function priorDissatisfaction(string $memberId, Schedule $schedule): int
+    {
+        $window = max(0, (int) config('solver.fairness.history_window', 3));
+        if ($window === 0) {
+            return 0;
+        }
+
+        $decay = (float) config('solver.fairness.decay', 0.5);
+
+        $records = (new MemberSatisfaction)->newQuery()
+            ->where('member_id', $memberId)
+            ->where('team_id', $schedule->team_id)
+            ->where('period_end', '<', $schedule->start_date)
+            ->orderByDesc('period_end')
+            ->limit($window)
+            ->pluck('dissatisfaction');
+
+        $total = 0.0;
+        foreach ($records as $rank => $dissatisfaction) {
+            $total += $dissatisfaction * ($decay ** $rank);
+        }
+
+        return (int) round($total);
     }
 }

@@ -135,6 +135,42 @@ def test_hard_preference_forbids_assignment():
     assert len(res.diagnostics["unfilled"]) == 1
 
 
+def test_reports_member_dissatisfaction():
+    # The weekend-avoider forced onto Saturday has a positive realised penalty.
+    req = SolveRequest(
+        scheduleId="s",
+        shifts=[_shift("sat", SATURDAY, [Requirement(type="headcount", skillId="cook", count=1)])],
+        members=[
+            Member(id="m1", skills=["cook"], eligibleShiftIds=["sat"],
+                   preferences=[Preference(type="weekend", params={"mode": "avoid"}, weight=5)]),
+        ],
+    )
+    res = solve_schedule(req)
+    assert {a.memberId for a in res.assignments} == {"m1"}
+    assert res.diagnostics["memberDissatisfaction"]["m1"] > 0
+
+
+def test_history_bias_spares_the_previously_worst_off():
+    # One weekend shift both cooks dislike equally; the member who suffered last
+    # period (high priorDissatisfaction) is spared and the other takes the hit.
+    # Flipping which member carries the history flips the assignment -> rotation.
+    def build(prior_m1, prior_m2):
+        return SolveRequest(
+            scheduleId="s",
+            shifts=[_shift("sat", SATURDAY, [Requirement(type="headcount", skillId="cook", count=1)])],
+            members=[
+                Member(id="m1", skills=["cook"], eligibleShiftIds=["sat"], priorDissatisfaction=prior_m1,
+                       preferences=[Preference(type="weekend", params={"mode": "avoid"}, weight=5)]),
+                Member(id="m2", skills=["cook"], eligibleShiftIds=["sat"], priorDissatisfaction=prior_m2,
+                       preferences=[Preference(type="weekend", params={"mode": "avoid"}, weight=5)]),
+            ],
+            objective={"lambda": 1.0},
+        )
+
+    assert {a.memberId for a in solve_schedule(build(500_000, 0)).assignments} == {"m2"}
+    assert {a.memberId for a in solve_schedule(build(0, 500_000)).assignments} == {"m1"}
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_") and callable(fn):

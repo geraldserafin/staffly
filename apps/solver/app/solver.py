@@ -135,11 +135,12 @@ def solve_schedule(req: SolveRequest) -> SolveResponse:
             coverage_slack.append((shift.id, line.skillId, cov))
 
     # Preference dissatisfaction per member (soft).
-    member_wd = []  # linear expressions, one per member
+    member_wd = {}  # member id -> linear expression
+    prior = {m.id: max(0, m.priorDissatisfaction) for m in req.members}
     for m in req.members:
         wd = _member_dissatisfaction(model, m, works, dur, bucket, weekend, weekday, category)
         if wd is not None:
-            member_wd.append(wd)
+            member_wd[m.id] = wd
 
     lam = max(0, min(100, round(float(req.objective.get("lambda", 0.3)) * 100)))
     n = max(1, len(member_wd))
@@ -147,10 +148,13 @@ def solve_schedule(req: SolveRequest) -> SolveResponse:
         sum(s for _, _, s in headcount_slack) + COVERAGE_PENALTY * sum(c for _, _, c in coverage_slack)
     )
     if member_wd:
-        worst = model.NewIntVar(0, SCALE * 1000, "worst")
-        for wd in member_wd:
-            model.Add(worst >= wd)
-        obj += (100 - lam) * sum(member_wd) + lam * n * worst
+        # Equity protects the cumulative worst-off (this period + carried history),
+        # so members shortchanged in past periods are favoured now.
+        wd_bound = SCALE * 1000 + max(prior.values(), default=0)
+        worst = model.NewIntVar(0, wd_bound, "worst")
+        for mid, wd in member_wd.items():
+            model.Add(worst >= prior.get(mid, 0) + wd)
+        obj += (100 - lam) * sum(member_wd.values()) + lam * n * worst
 
     model.Minimize(obj)
 
@@ -175,6 +179,10 @@ def solve_schedule(req: SolveRequest) -> SolveResponse:
         for sid, skill, c in coverage_slack if solver.Value(c) == 1
     ]
 
+    # Realised per-member dissatisfaction — persisted on publish as next period's
+    # history input (feeds priorDissatisfaction on future solves).
+    member_dissatisfaction = {mid: int(solver.Value(wd)) for mid, wd in member_wd.items()}
+
     return SolveResponse(
         assignments=[Assignment(shiftId=sid, memberId=mid) for (mid, sid) in assignments],
         diagnostics={
@@ -183,6 +191,7 @@ def solve_schedule(req: SolveRequest) -> SolveResponse:
             "objective": solver.ObjectiveValue(),
             "unfilled": unfilled,
             "uncovered": uncovered,
+            "memberDissatisfaction": member_dissatisfaction,
         },
     )
 
