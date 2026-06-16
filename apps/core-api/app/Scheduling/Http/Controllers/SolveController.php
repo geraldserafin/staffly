@@ -2,7 +2,9 @@
 
 namespace App\Scheduling\Http\Controllers;
 
+use App\Scheduling\Actions\PreviewSolve;
 use App\Scheduling\Actions\QueueSolve;
+use App\Scheduling\Http\Requests\PreviewSolveRequest;
 use App\Scheduling\Http\Resources\SolveRunResource;
 use App\Scheduling\Models\Schedule;
 use App\Scheduling\Models\SolveRun;
@@ -18,6 +20,13 @@ class SolveController
         return SolveRunResource::make($run)
             ->response()
             ->setStatusCode(JsonResponse::HTTP_ACCEPTED);
+    }
+
+    public function preview(PreviewSolveRequest $request, Schedule $schedule, PreviewSolve $action): JsonResponse
+    {
+        $lambda = $request->validated('lambda');
+
+        return new JsonResponse($action->handle($schedule, $lambda !== null ? (float) $lambda : null));
     }
 
     public function show(SolveRun $solveRun): SolveRunResource

@@ -22,6 +22,7 @@ Route::post('schedules/{schedule}/archive', [ScheduleController::class, 'archive
 
 // Solver
 Route::post('schedules/{schedule}/solve', [SolveController::class, 'solve']);
+Route::post('schedules/{schedule}/solve/preview', [SolveController::class, 'preview']);
 Route::get('solve-runs/{solveRun}', [SolveController::class, 'show']);
 
 // Shifts within a schedule

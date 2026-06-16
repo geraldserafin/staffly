@@ -328,6 +328,13 @@ hard_approved`. Unique `(member_id, type)`.
   never stuck on `running`. Clients poll `GET /solve-runs/{id}`. Needs a queue
   worker in prod (`QUEUE_CONNECTION=database`, `php artisan queue:work`); the test
   suite uses `sync` so jobs run inline.
+- **Dry-run preview** (`POST /schedules/{id}/solve/preview`, `PreviewSolve`): runs
+  the same build+solve for a **candidate `lambda`** (optional body param, else the
+  schedule's stored value) and returns `{assignments, diagnostics}` **synchronously
+  without writing assignments or recording a `SolveRun`**. Powers live λ scrubbing
+  (~60 ms at the target scale). Locked assignments are still honored. Unlike the
+  queued `POST /solve`, it never mutates the draft — explore freely, then commit
+  via `/solve`.
 
 > Gotcha: `SOLVER_DRIVER=http php artisan serve` does **not** work — `artisan
 > serve` spawns a child that re-reads `.env`. Set it in `.env`.
@@ -457,17 +464,6 @@ global fallback.
 - **`avoid_fast_rotation` + soft `max_consecutive_days`** — penalties exist in the
   catalog; `avoid_fast_rotation` needs ordered night→day adjacency semantics on
   `category`; `max_consecutive_days` needs run-length vars.
-- **Live λ preview (dry-run solve)** — the manager scrubs the λ equity dial (and
-  potentially `priority`/weights) and sees the reshuffle + per-member
-  dissatisfaction **live**, before committing. Measured solve time makes this
-  interactive at the target scale: ~60 ms for 15 members / 1 week, ~110 ms for
-  2 weeks, ~675 ms at 30 members; it degrades past ~30 (50 members / 2 weeks pins
-  the 10 s cap and returns only *feasible*), so large orgs need a "still
-  optimizing…" affordance. Design: a **dry-run endpoint** reusing
-  `SolveRequestBuilder` + `Solver` that returns `{assignments, diagnostics}` for a
-  given λ **without writing assignments or creating a `SolveRun`**; the existing
-  `POST /solve` remains the persisting commit. Slider reads as *efficient ↔ fair*
-  (λ), distinct from the per-member seniority knob (`priority`).
 - **Compare/keep-best across solve runs** — retain each run's result
   (`SolveRun.result_snapshot`) to hold runs side-by-side; today re-solve
   overwrites in place.
