@@ -39,7 +39,7 @@ class PublishSchedule
 
         $dissatisfaction = $run?->diagnostics['memberDissatisfaction'] ?? null;
         if (! is_array($dissatisfaction)) {
-            return; // stub solver / no soft prefs — nothing to record
+            return; // no soft prefs / solver emitted no dissatisfaction — nothing to record
         }
 
         foreach ($dissatisfaction as $memberId => $value) {

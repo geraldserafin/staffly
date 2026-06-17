@@ -2,7 +2,6 @@
 
 namespace App\Scheduling;
 
-use App\Scheduling\Solver\GreedyStubSolver;
 use App\Scheduling\Solver\HttpSolver;
 use App\Scheduling\Solver\Solver;
 use Illuminate\Support\Facades\Route;
@@ -17,10 +16,8 @@ class SchedulingServiceProvider extends ServiceProvider
             (int) config('solver.timeout'),
         ));
 
-        // SOLVER_DRIVER=http routes to the Python OR-Tools service; default stub.
-        $this->app->bind(Solver::class, fn ($app) => config('solver.driver') === 'http'
-            ? $app->make(HttpSolver::class)
-            : $app->make(GreedyStubSolver::class));
+        // The solver is the Python OR-Tools service.
+        $this->app->bind(Solver::class, fn ($app) => $app->make(HttpSolver::class));
     }
 
     public function boot(): void

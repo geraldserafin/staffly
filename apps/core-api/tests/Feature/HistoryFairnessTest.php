@@ -99,7 +99,7 @@ class HistoryFairnessTest extends TestCase
     public function test_publish_without_dissatisfaction_diagnostics_records_nothing(): void
     {
         $schedule = Schedule::factory()->create();
-        $this->solveRun($schedule, SolveStatus::Succeeded, ['solver' => 'greedy-stub']);
+        $this->solveRun($schedule, SolveStatus::Succeeded, ['solver' => 'cp-sat']);
 
         app(PublishSchedule::class)->handle($schedule);
 
