@@ -173,6 +173,32 @@ def test_history_bias_spares_the_previously_worst_off():
     assert {a.memberId for a in solve_schedule(build(0, 500_000)).assignments} == {"m1"}
 
 
+def test_lambda_one_minimizes_total_among_equally_worst_off():
+    # Pure equity (λ=1). m1 is the unavoidable worst-off: sole cook on sat1 and a
+    # weekend-avoider, so it sets the max dissatisfaction no matter what. sat2 can be
+    # covered by m2 (also weekend-averse, same penalty) or m3 (no preference). Since
+    # the worst-off is pinned by m1, the max-min term is indifferent to sat2 — without
+    # a ΣWD tiebreak the solver may needlessly burden m2. The tiebreak must pick m3
+    # and leave m2 at zero dissatisfaction.
+    req = SolveRequest(
+        scheduleId="s",
+        shifts=[_shift("sat1", SATURDAY, _cook()), _shift("sat2", SATURDAY, _cook())],
+        members=[
+            Member(id="m1", skills=["cook"], eligibleShiftIds=["sat1"],
+                   preferences=[Preference(type="weekend", params={"mode": "avoid"}, weight=5)]),
+            Member(id="m2", skills=["cook"], eligibleShiftIds=["sat2"],
+                   preferences=[Preference(type="weekend", params={"mode": "avoid"}, weight=5)]),
+            Member(id="m3", skills=["cook"], eligibleShiftIds=["sat2"]),
+        ],
+        objective={"lambda": 1.0},
+    )
+    res = solve_schedule(req)
+    assigned = {a.shiftId: a.memberId for a in res.assignments}
+    assert assigned["sat1"] == "m1"
+    assert assigned["sat2"] == "m3"
+    assert res.diagnostics["memberDissatisfaction"]["m2"] == 0
+
+
 def _cook():
     return [Requirement(type="headcount", skillId="cook", count=1)]
 

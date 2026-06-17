@@ -159,7 +159,12 @@ def solve_schedule(req: SolveRequest) -> SolveResponse:
         worst = model.NewIntVar(0, wd_bound, "worst")
         for mid, wd in member_wd.items():
             model.Add(worst >= prior.get(mid, 0) + wd)
-        obj += (100 - lam) * sum(member_wd.values()) + lam * n * worst
+        # max(1, ...) keeps a weight-1 ΣWD tiebreak even at λ=1 (pure equity). Without
+        # it the sum term vanishes, leaving every non-worst member's dissatisfaction
+        # unconstrained — the solver returns any max-min optimum, often inflating ΣWD.
+        # The tiebreak picks the lowest-total solution among equal worst-off ones; the
+        # worst term (weight λ·n) still dominates, so equity is unchanged.
+        obj += max(1, 100 - lam) * sum(member_wd.values()) + lam * n * worst
 
     model.Minimize(obj)
 
