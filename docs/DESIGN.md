@@ -324,15 +324,21 @@ hard_approved`. Unique `(member_id, type)`.
   never sees raw availability or resolves anything. Single source of truth.
 - `lambda` comes from `schedule.weights`.
 
-### Drivers
-`Solver` interface, bound in `SchedulingServiceProvider::register()` by
-`config('solver.driver')`:
-- `stub` (default) — `GreedyStubSolver`, in-process PHP. Greedy fill respecting
-  eligibility, skills, rest/double-book, locked. Lets the whole pipeline run with
-  no Python. Tests use it.
-- `http` — `HttpSolver` POSTs to the Python service (`SOLVER_URL`,
-  `SOLVER_TIMEOUT`).
-- Swapping is one env var; nothing upstream changes.
+### Driver
+`Solver` interface, bound in `SchedulingServiceProvider::register()` to the single
+implementation `HttpSolver`, which POSTs to the Python OR-Tools service
+(`SOLVER_URL`, `SOLVER_TIMEOUT`). The solver service must be running for solving to
+work — there is no in-process fallback. (An earlier `GreedyStubSolver` /
+`SOLVER_DRIVER` switch let the pipeline run Python-free; it was removed once the
+real solver became the only one we ship — the tests now exercise it directly.)
+- **Ports & `SOLVER_URL`**: in the devenv stack core-api runs on `:8000` and the
+  solver on `:8001`, so `SOLVER_URL` is `http://127.0.0.1:8001`. It must never point
+  at core-api's own port — a synchronous solve (the `/solve/preview` endpoint runs
+  in the request process, not the queue worker) would then POST `/solve` back to the
+  single-process `artisan serve` and deadlock until `SOLVER_TIMEOUT` (cURL error 28,
+  no 404). Laravel resolves `env('SOLVER_URL')` from `.env` with `putenv` disabled,
+  so **`.env` is the source of truth** — an exported shell var (e.g. from
+  `devenv.nix`) does not override it.
 - Solve is **asynchronous**: `POST /schedules/{id}/solve` (`QueueSolve`) records a
   `pending` `SolveRun`, dispatches `SolveScheduleJob`, and returns **202** with the
   run immediately. The job (one attempt, `tries=1`) flips the run to `running`,
@@ -355,9 +361,6 @@ hard_approved`. Unique `(member_id, type)`.
   (diagnostics + snapshot) to compare; `POST /solve-runs/{id}/apply` re-applies a
   chosen run's snapshot — pick the best of several, or revert after a re-solve.
   Applying a run with no snapshot (e.g. pending/failed) is a 422.
-
-> Gotcha: `SOLVER_DRIVER=http php artisan serve` does **not** work — `artisan
-> serve` spawns a child that re-reads `.env`. Set it in `.env`.
 
 ### CP-SAT model (`apps/solver/app/solver.py`)
 **Hard:**
@@ -429,8 +432,8 @@ period. The mechanism reuses the equity machinery:
 - The equity term changes from `worst ≥ WD[m]` to `worst ≥ prior[m] + WD[m]`, so
   the λ dial now protects the **cumulative** worst-off. Same fixed-point units —
   no rescaling. The utilitarian `Σ WD` term is unchanged (prior is constant
-  there). The greedy stub emits no dissatisfaction, so history is a real-solver
-  feature; publishing after a stub solve records nothing.
+  there). A solve whose diagnostics carry no `memberDissatisfaction` (e.g. a
+  schedule with no soft preferences) records nothing on publish.
 
 ---
 
@@ -480,14 +483,21 @@ global fallback.
 ## 7. Testing & running
 
 - **PHP**: PHPUnit on sqlite `:memory:` (`RefreshDatabase`). Suite includes the
-  availability resolver unit test (overnight, allowlist, override). End-to-end
-  flows verified by `artisan serve` + curl smoke runs against PostgreSQL.
+  availability resolver unit test (overnight, allowlist, override). The solve-path
+  tests (`AsyncSolveTest`, `PreviewSolveTest`, `KeepBestRunTest`) hit the **real
+  Python solver** over HTTP — there is no stub — so the solver service must be
+  running (`SOLVER_URL`, `:8001` in the devenv stack) when running the suite,
+  including in CI. End-to-end flows verified by `artisan serve` + curl smoke runs
+  against PostgreSQL.
 - **Solver**: `apps/solver/tests/test_solver.py` (headcount, multi-skill-once,
   rest, locked, soft-steering, hard-forbid). Run: `PYTHONPATH=. python
   tests/test_solver.py`.
-- **Run the solver**: `direnv reload` (builds the venv), then from `apps/solver`:
-  `PYTHONPATH=. uvicorn app.main:app --port 8000`. Point core-api at it with
-  `SOLVER_DRIVER=http`.
+- **Whole stack**: `devenv up` runs postgres, the solver (`:8001`), core-api
+  (`:8000` web + queue worker), and the Angular dev server (`:4200`). E2E suite:
+  `test-e2e` (boots a solver, waits for health, runs the core-api suite against it).
+- **Run the solver** standalone: `direnv reload` (builds the venv), then from
+  `apps/solver`: `PYTHONPATH=. uvicorn app.main:app --port 8001`. core-api targets it
+  via `SOLVER_URL` (`http://127.0.0.1:8001`); see §6 Driver for the port rule.
 - **Run core-api**: `php artisan serve`. PostgreSQL via `devenv up -d`.
 
 ---

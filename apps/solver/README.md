@@ -9,7 +9,7 @@ Requires the devenv Python venv (added in `devenv.nix`). After a `direnv reload`
 (or re-entering the shell so the venv builds):
 
 ```bash
-uvicorn app.main:app --reload --port 8000   # from apps/solver
+uvicorn app.main:app --reload --port 8001   # from apps/solver (:8000 is core-api)
 ```
 
 - `GET  /health` → `{"status":"ok"}`
@@ -27,4 +27,9 @@ Deferred: hours / rest / consecutive limits, fairness, preferences.
 
 ## Wiring
 
-Point core-api at it: `SOLVER_DRIVER=http` and `SOLVER_URL=http://127.0.0.1:8000`.
+Point core-api at it with `SOLVER_URL=http://127.0.0.1:8001` (the port it uses in
+the devenv stack, where core-api owns `:8000`). `SOLVER_URL` must not equal
+core-api's own port, or a synchronous `/solve/preview` deadlocks the single-process
+`artisan serve` until the timeout. core-api always solves via this service — there
+is no in-process fallback, so it must be running, including for the core-api test
+suite.
