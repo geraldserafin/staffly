@@ -28,8 +28,9 @@ class StoreShiftTemplateRequest extends FormRequest
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i'],
             'rest_hours_after' => ['nullable', 'integer', 'min:0'],
-            'team_id' => [
-                'nullable',
+            // Empty/absent = applies to all the org's teams; set = scoped to these.
+            'team_ids' => ['nullable', 'array'],
+            'team_ids.*' => [
                 'uuid',
                 Rule::exists('teams', 'id')->where('organization_id', $organizationId),
             ],

@@ -175,12 +175,16 @@ cross-entity checks here (e.g. assignment double-book overlap, same-org guards).
 - M2M owned by Skills (`Skill::members()`); same one-way pattern as Teams.
 
 ### ShiftTemplates
-`shift_templates`: `id`, `organization_id`, `team_id` (nullable), `name`,
+`shift_templates`: `id`, `organization_id`, `name`,
 `category`, `start_time`, `end_time`, `rest_hours_after`, `recurrence_frequency`,
 `recurrence_days`. `shift_template_requirements`: `skill_id`, `type`, `count`,
 `days`.
-- **Org-owned, optional `team_id`.** Null = shared across all the org's teams;
-  set = scoped to one team. (Manager instinct: "org-wide with a per-team option".)
+- **Org-owned, scoped to teams via `shift_template_team` (M2M).** **No** rows =
+  shared across all the org's teams (the default); rows = scoped to exactly those
+  teams. (Replaced an earlier single nullable `team_id` — managers wanted a
+  template usable by several specific locations, not just "one or all".) Attach/
+  detach from the team side: `PUT|DELETE teams/{team}/shift-templates/{template}`;
+  `GET teams/{team}/shift-templates` lists what generates for a team.
 - **Times only, overnight allowed** (`end < start` ⇒ crosses midnight). Resolved
   to datetimes when materialized, so day-spanning is unambiguous downstream.
 - **Recurrence**: `recurrence_frequency` (`weekly|monthly`, null = non-recurring)
@@ -224,9 +228,13 @@ The core slice. `schedules`, `scheduled_shifts`, `shift_requirements`,
   `locked` pins a manual/approved choice so the solver keeps it on re-solve.
   Togglable via `PATCH /shift-assignments/{id}`.
 - **Generation** (`GenerateScheduleShifts`): on schedule create, expand the
-  team's applicable recurring templates across the period → concrete shifts,
-  computing `start_at/end_at` (overnight-aware) and **summing day-scoped
-  requirements** per day. Materialized rows.
+  team's applicable recurring templates (M2M scope) across the period → concrete
+  shifts, computing `start_at/end_at` (overnight-aware) and **summing day-scoped
+  requirements** per day. Materialized rows. **Re-runnable** via
+  `POST /schedules/{id}/shifts/generate`: regenerates template-originated shifts
+  (so templates added/attached *after* a schedule was created still flow in),
+  while **preserving manually-added shifts** (`shift_template_id` null) and their
+  assignments.
 - **Include/exclude days** = add/delete shift rows (shifts are real rows, so a
   holiday Monday is just a `DELETE`; no recurrence-exception table).
 - **Manual assignment conflict checks** (in the FormRequest): member is in the

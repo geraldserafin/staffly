@@ -4,9 +4,12 @@ namespace App\ShiftTemplates\Http\Controllers;
 
 use App\Organizations\Models\Organization;
 use App\ShiftTemplates\Actions\AddRequirement;
+use App\ShiftTemplates\Actions\AttachTemplateToTeam;
 use App\ShiftTemplates\Actions\CreateShiftTemplate;
 use App\ShiftTemplates\Actions\DeleteShiftTemplate;
+use App\ShiftTemplates\Actions\DetachTemplateFromTeam;
 use App\ShiftTemplates\Actions\ListOrganizationShiftTemplates;
+use App\ShiftTemplates\Actions\ListTeamShiftTemplates;
 use App\ShiftTemplates\Actions\RemoveRequirement;
 use App\ShiftTemplates\Actions\ShowShiftTemplate;
 use App\ShiftTemplates\Actions\UpdateShiftTemplate;
@@ -31,12 +34,7 @@ class ShiftTemplateController
 
     public function store(StoreShiftTemplateRequest $request, Organization $organization, CreateShiftTemplate $action): JsonResponse
     {
-        $data = $request->validated();
-        $team = isset($data['team_id'])
-            ? (new Team)->newQuery()->find($data['team_id'])
-            : null;
-
-        $template = $action->handle($organization, $team, $data);
+        $template = $action->handle($organization, $request->validated());
 
         return ShiftTemplateResource::make($template)
             ->response()
@@ -74,5 +72,33 @@ class ShiftTemplateController
         $action->handle($requirement);
 
         return response()->noContent();
+    }
+
+    public function teamTemplates(Team $team, ListTeamShiftTemplates $action): AnonymousResourceCollection
+    {
+        return ShiftTemplateResource::collection($action->handle($team));
+    }
+
+    public function attachTeam(Team $team, ShiftTemplate $shiftTemplate, AttachTemplateToTeam $action): ShiftTemplateResource
+    {
+        $this->assertSameOrg($team, $shiftTemplate);
+
+        return ShiftTemplateResource::make($action->handle($shiftTemplate, $team));
+    }
+
+    public function detachTeam(Team $team, ShiftTemplate $shiftTemplate, DetachTemplateFromTeam $action): ShiftTemplateResource
+    {
+        $this->assertSameOrg($team, $shiftTemplate);
+
+        return ShiftTemplateResource::make($action->handle($shiftTemplate, $team));
+    }
+
+    private function assertSameOrg(Team $team, ShiftTemplate $template): void
+    {
+        abort_unless(
+            $team->organization_id === $template->organization_id,
+            Response::HTTP_UNPROCESSABLE_ENTITY,
+            'Template and team belong to different organizations.',
+        );
     }
 }

@@ -12,3 +12,8 @@ Route::delete('shift-templates/{shiftTemplate}', [ShiftTemplateController::class
 
 Route::post('shift-templates/{shiftTemplate}/requirements', [ShiftTemplateController::class, 'addRequirement']);
 Route::delete('shift-template-requirements/{requirement}', [ShiftTemplateController::class, 'removeRequirement']);
+
+// Team scoping (which templates generate shifts for a team).
+Route::get('teams/{team}/shift-templates', [ShiftTemplateController::class, 'teamTemplates']);
+Route::put('teams/{team}/shift-templates/{shiftTemplate}', [ShiftTemplateController::class, 'attachTeam']);
+Route::delete('teams/{team}/shift-templates/{shiftTemplate}', [ShiftTemplateController::class, 'detachTeam']);

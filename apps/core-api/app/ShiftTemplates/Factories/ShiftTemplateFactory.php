@@ -21,7 +21,6 @@ class ShiftTemplateFactory extends Factory
     {
         return [
             'organization_id' => Organization::factory(),
-            'team_id' => null,
             'name' => fake()->randomElement(['Morning', 'Afternoon', 'Evening', 'Night']),
             'start_time' => '09:00:00',
             'end_time' => '17:00:00',

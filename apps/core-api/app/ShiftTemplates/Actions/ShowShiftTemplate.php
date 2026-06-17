@@ -8,6 +8,6 @@ class ShowShiftTemplate
 {
     public function handle(ShiftTemplate $template): ShiftTemplate
     {
-        return $template->load('requirements');
+        return $template->load(['requirements', 'teams']);
     }
 }

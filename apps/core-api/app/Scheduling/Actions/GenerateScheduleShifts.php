@@ -15,7 +15,9 @@ class GenerateScheduleShifts
 {
     /**
      * Expand the team's recurring templates across the schedule period into
-     * concrete shifts, snapshotting each template's requirements.
+     * concrete shifts, snapshotting each template's requirements. Re-runnable:
+     * template-originated shifts are regenerated, manually-added shifts (and any
+     * assignments on them) are preserved.
      */
     public function handle(Schedule $schedule): void
     {
@@ -24,13 +26,20 @@ class GenerateScheduleShifts
         $templates = (new ShiftTemplate)->newQuery()
             ->where('organization_id', $team->organization_id)
             ->whereNotNull('recurrence_frequency')
-            ->with('requirements')
+            ->with(['requirements', 'teams'])
             ->get()
-            ->filter(fn (ShiftTemplate $template) => $template->team_id === null || $template->team_id === $team->getKey());
+            ->filter(fn (ShiftTemplate $template) => $template->appliesToTeam($team));
 
         $days = CarbonPeriod::create($schedule->start_date, $schedule->end_date);
 
         DB::transaction(function () use ($schedule, $templates, $days): void {
+            // Clear previously generated shifts so re-running picks up template
+            // changes; manual shifts (no template origin) are left untouched.
+            (new ScheduledShift)->newQuery()
+                ->where('schedule_id', $schedule->getKey())
+                ->whereNotNull('shift_template_id')
+                ->delete();
+
             foreach ($days as $date) {
                 foreach ($templates as $template) {
                     if (! $this->occursOn($template, $date->dayOfWeekIso, $date->day)) {

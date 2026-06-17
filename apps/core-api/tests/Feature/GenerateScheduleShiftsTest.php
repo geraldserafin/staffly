@@ -105,10 +105,13 @@ class GenerateScheduleShiftsTest extends TestCase
 
     public function test_only_org_templates_scoped_to_this_team_or_shared_are_used(): void
     {
-        $shared = $this->template(['team_id' => null, 'recurrence_days' => [1]]);
-        $mine = $this->template(['team_id' => $this->team->id, 'recurrence_days' => [1]]);
+        $shared = $this->template(['recurrence_days' => [1]]); // no team scope = all teams
+        $mine = $this->template(['recurrence_days' => [1]]);
+        $mine->teams()->attach($this->team->id);
+
         $otherTeam = Team::factory()->create(['organization_id' => $this->org->id]);
-        $this->template(['team_id' => $otherTeam->id, 'recurrence_days' => [1]]);
+        $this->template(['recurrence_days' => [1]])->teams()->attach($otherTeam->id);
+
         // A template in a different organization entirely.
         $otherOrg = Organization::factory()->create();
         ShiftTemplate::factory()->create(['organization_id' => $otherOrg->id, 'recurrence_days' => [1]]);
@@ -119,6 +122,23 @@ class GenerateScheduleShiftsTest extends TestCase
             [$shared->id, $mine->id],
             $this->shifts()->pluck('shift_template_id')->all(),
         );
+    }
+
+    public function test_regeneration_replaces_generated_shifts_but_keeps_manual_ones(): void
+    {
+        // A manual (non-template) shift the manager added directly.
+        $manual = ScheduledShift::factory()->create(['schedule_id' => $this->schedule->id]);
+
+        $this->template(['recurrence_days' => [1]]); // Mondays in the period
+        $this->generate();
+        $firstGenerated = $this->shifts()->firstWhere('shift_template_id', '!=', null);
+        $this->assertNotNull($firstGenerated);
+
+        // Re-running regenerates template shifts (new ids) and keeps the manual one.
+        $this->generate();
+        $ids = $this->shifts()->pluck('id');
+        $this->assertTrue($ids->contains($manual->id));
+        $this->assertFalse($ids->contains($firstGenerated->id));
     }
 
     public function test_overnight_shift_ends_on_the_next_day(): void

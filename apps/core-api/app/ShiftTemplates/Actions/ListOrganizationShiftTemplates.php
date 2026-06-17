@@ -15,7 +15,7 @@ class ListOrganizationShiftTemplates
     {
         return (new ShiftTemplate)->newQuery()
             ->where('organization_id', $organization->getKey())
-            ->with('requirements')
+            ->with(['requirements', 'teams'])
             ->get();
     }
 }

@@ -38,6 +38,17 @@ class ScheduleController
             ->setStatusCode(Response::HTTP_CREATED);
     }
 
+    /**
+     * Re-run template expansion (e.g. after templates were added or attached to
+     * the team). Regenerates template-originated shifts; manual shifts survive.
+     */
+    public function regenerate(Schedule $schedule, GenerateScheduleShifts $generate): ScheduleResource
+    {
+        $generate->handle($schedule);
+
+        return ScheduleResource::make($schedule->load(['shifts.requirements', 'shifts.assignments']));
+    }
+
     public function show(Schedule $schedule, ShowSchedule $action): ScheduleResource
     {
         return ScheduleResource::make($action->handle($schedule));

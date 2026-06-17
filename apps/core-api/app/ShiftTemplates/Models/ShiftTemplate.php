@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ShiftTemplate extends Model
@@ -43,9 +44,18 @@ class ShiftTemplate extends Model
         return $this->belongsTo(Organization::class);
     }
 
-    public function team(): BelongsTo
+    /**
+     * Teams this template is scoped to. Empty = applies to all the org's teams.
+     */
+    public function teams(): BelongsToMany
     {
-        return $this->belongsTo(Team::class);
+        return $this->belongsToMany(Team::class, 'shift_template_team')->withTimestamps();
+    }
+
+    /** Whether this template generates shifts for the given team. */
+    public function appliesToTeam(Team $team): bool
+    {
+        return $this->teams->isEmpty() || $this->teams->contains($team);
     }
 
     public function requirements(): HasMany

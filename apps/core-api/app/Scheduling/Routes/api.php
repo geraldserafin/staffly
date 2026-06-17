@@ -19,6 +19,7 @@ Route::put('schedules/{schedule}', [ScheduleController::class, 'update']);
 Route::delete('schedules/{schedule}', [ScheduleController::class, 'destroy']);
 Route::post('schedules/{schedule}/publish', [ScheduleController::class, 'publish']);
 Route::post('schedules/{schedule}/archive', [ScheduleController::class, 'archive']);
+Route::post('schedules/{schedule}/shifts/generate', [ScheduleController::class, 'regenerate']);
 
 // Solver
 Route::post('schedules/{schedule}/solve', [SolveController::class, 'solve']);
