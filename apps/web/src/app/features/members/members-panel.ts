@@ -20,7 +20,7 @@ import { MembersService } from './members.service';
       (add)="create($event)"
     >
       <ng-template let-m>
-        <a [routerLink]="['/members', m.id]">{{ m.name }}</a>
+        <a [routerLink]="[m.id]">{{ m.name }}</a>
         <small>priority {{ m.priority }}</small>
         <button (click)="remove(m)">delete</button>
       </ng-template>

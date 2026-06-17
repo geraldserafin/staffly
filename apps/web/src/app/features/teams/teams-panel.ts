@@ -20,7 +20,7 @@ import { TeamsService } from './teams.service';
       (add)="create($event)"
     >
       <ng-template let-t>
-        <a [routerLink]="['/teams', t.id]">{{ t.name }}</a>
+        <a [routerLink]="[t.id]">{{ t.name }}</a>
         <button (click)="remove(t)">delete</button>
       </ng-template>
     </app-crud-list>

@@ -11,6 +11,7 @@ import { TeamsService } from './teams.service';
   selector: 'app-team-detail',
   imports: [FormsModule, RouterLink],
   template: `
+    <a class="muted" routerLink="..">‹ Teams</a>
     @if (team(); as t) {
       <h2>Team: {{ t.name }}</h2>
 
@@ -82,7 +83,7 @@ import { TeamsService } from './teams.service';
         <ul>
           @for (s of schedules(); track s.id) {
             <li>
-              <a [routerLink]="['/schedules', s.id]">{{ s.name }}</a>
+              <a [routerLink]="['/orgs', t.organizationId, 'schedules', s.id]">{{ s.name }}</a>
               <small>{{ s.startDate }}→{{ s.endDate }} · {{ s.status }}</small>
             </li>
           } @empty {

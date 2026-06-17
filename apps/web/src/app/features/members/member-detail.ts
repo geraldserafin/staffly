@@ -1,5 +1,6 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import {
   Availability,
   AvailabilityKind,
@@ -24,8 +25,9 @@ const PREFERENCE_TYPES: PreferenceType[] = [
 
 @Component({
   selector: 'app-member-detail',
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   template: `
+    <a class="muted" routerLink="..">‹ Members</a>
     @if (member(); as m) {
       <h2>{{ m.name }}</h2>
       <label>

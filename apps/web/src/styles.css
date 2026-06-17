@@ -170,6 +170,189 @@ pre {
   overflow: auto;
 }
 
+/* Org shell: sidebar + content -------------------------------------------- */
+
+.shell {
+  display: grid;
+  grid-template-columns: 13rem 1fr;
+  gap: var(--gap);
+  align-items: start;
+}
+
+.sidebar {
+  position: sticky;
+  top: var(--gap);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--gap);
+}
+
+.sidebar .org-switch {
+  width: 100%;
+}
+
+.sidebar .org-switch select {
+  width: 100%;
+  margin-top: 0.2rem;
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.sidebar nav a {
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius);
+  color: inherit;
+  text-decoration: none;
+}
+
+.sidebar nav a:hover {
+  background: var(--bg-soft);
+}
+
+.sidebar nav a.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.sidebar .back {
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.content {
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    position: static;
+  }
+}
+
+/* Page header, tabs, badges ------------------------------------------------ */
+
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--gap);
+}
+
+.page-head h2 {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.05rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  font-size: 0.8rem;
+  background: var(--bg-soft);
+}
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border);
+  margin: var(--gap) 0;
+}
+
+.tabs button {
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: transparent;
+  text-transform: capitalize;
+}
+
+.tabs button.active {
+  border-color: var(--border);
+  background: #fff;
+  font-weight: 600;
+  margin-bottom: -1px;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip {
+  padding: 0.05rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  font-size: 0.8rem;
+}
+
+.cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap);
+}
+
+@media (max-width: 600px) {
+  .cols {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Roster matrix (members × days) ------------------------------------------- */
+
+.roster {
+  overflow-x: auto;
+}
+
+.roster table {
+  width: auto;
+}
+
+.roster th,
+.roster td {
+  min-width: 2.3rem;
+  padding: 0.25rem 0.4rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.roster td {
+  font-weight: 600;
+}
+
+.roster .corner,
+.roster .rowhead {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #fff;
+  text-align: left;
+}
+
+.roster th.weekend,
+.roster td.weekend {
+  background: var(--bg-soft);
+}
+
 /* States ------------------------------------------------------------------- */
 
 .error {
