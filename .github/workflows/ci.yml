@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Solver unit tests (CP-SAT model: headcount, multi-skill-once, rest, locked,
+  # soft-steering, hard-forbid). Pure Python, no core-api needed.
+  solver:
+    name: solver (pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/solver
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: apps/solver/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: PYTHONPATH=. python tests/test_solver.py
+
+  # core-api suite on sqlite :memory:. The solve-path tests (AsyncSolveTest,
+  # PreviewSolveTest, KeepBestRunTest) hit the real solver over HTTP — there is no
+  # stub — so we boot the Python solver on :8001 and point SOLVER_URL at it.
+  core-api:
+    name: core-api (php test + live solver)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: mbstring, dom, curl, xml, bcmath, pdo_sqlite, sqlite3, fileinfo
+          coverage: none
+
+      - name: Set up Python (solver)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: apps/solver/requirements.txt
+
+      - name: Install solver deps
+        run: pip install -r apps/solver/requirements.txt
+
+      - name: Install composer deps
+        working-directory: apps/core-api
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare env
+        working-directory: apps/core-api
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Boot solver and wait for health
+        run: |
+          ( cd apps/solver && PYTHONPATH=. uvicorn app.main:app --port 8001 ) &
+          echo "SOLVER_PID=$!" >> "$GITHUB_ENV"
+          for _ in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:8001/health >/dev/null; then
+              echo "solver healthy"; exit 0
+            fi
+            sleep 0.5
+          done
+          echo "solver did not become healthy in time" >&2; exit 1
+
+      - name: Run core-api test suite
+        working-directory: apps/core-api
+        env:
+          SOLVER_URL: http://127.0.0.1:8001
+        run: php artisan test
+
+      - name: Stop solver
+        if: always()
+        run: kill "$SOLVER_PID" 2>/dev/null || true
+
+  # Angular build smoke. No styling/test-runner gate yet — just prove it compiles.
+  web:
+    name: web (build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
