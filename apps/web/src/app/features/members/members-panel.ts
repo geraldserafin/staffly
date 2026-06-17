@@ -1,57 +1,67 @@
 import { Component, inject, input, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { errorMessage } from '../../core/errors';
 import { Member } from '../../core/models';
+import { CrudList } from '../../ui/crud-list';
 import { MembersService } from './members.service';
 
 @Component({
   selector: 'app-members-panel',
-  imports: [FormsModule, RouterLink],
+  imports: [CrudList, RouterLink],
   template: `
-    <section>
-      <h3>Members</h3>
-      <form (submit)="create($event)">
-        <input [(ngModel)]="name" name="memberName" placeholder="Member name" required />
-        <button type="submit">Add member</button>
-      </form>
-      <ul>
-        @for (m of members(); track m.id) {
-          <li>
-            <a [routerLink]="['/members', m.id]">{{ m.name }}</a>
-            <small>priority {{ m.priority }}</small>
-            <button (click)="remove(m)">delete</button>
-          </li>
-        } @empty {
-          <li><em>No members.</em></li>
-        }
-      </ul>
-    </section>
+    <app-crud-list
+      heading="Members"
+      placeholder="Member name"
+      addLabel="Add member"
+      emptyText="No members."
+      [items]="members()"
+      [busy]="busy()"
+      [error]="error()"
+      (add)="create($event)"
+    >
+      <ng-template let-m>
+        <a [routerLink]="['/members', m.id]">{{ m.name }}</a>
+        <small>priority {{ m.priority }}</small>
+        <button (click)="remove(m)">delete</button>
+      </ng-template>
+    </app-crud-list>
   `,
 })
 export class MembersPanel {
   private readonly service = inject(MembersService);
   readonly orgId = input.required<string>();
   readonly members = signal<Member[]>([]);
-  name = '';
+  readonly busy = signal(false);
+  readonly error = signal<string | null>(null);
 
   ngOnInit(): void {
     this.load();
   }
 
   load(): void {
-    this.service.listByOrg(this.orgId()).subscribe((m) => this.members.set(m));
-  }
-
-  create(event: Event): void {
-    event.preventDefault();
-    if (!this.name.trim()) return;
-    this.service.create(this.orgId(), { name: this.name.trim() }).subscribe(() => {
-      this.name = '';
-      this.load();
+    this.busy.set(true);
+    this.service.listByOrg(this.orgId()).subscribe({
+      next: (m) => {
+        this.members.set(m);
+        this.busy.set(false);
+      },
+      error: (e) => this.fail(e),
     });
   }
 
+  create(name: string): void {
+    this.busy.set(true);
+    this.error.set(null);
+    this.service.create(this.orgId(), { name }).subscribe({ next: () => this.load(), error: (e) => this.fail(e) });
+  }
+
   remove(m: Member): void {
-    this.service.remove(m.id).subscribe(() => this.load());
+    this.busy.set(true);
+    this.service.remove(m.id).subscribe({ next: () => this.load(), error: (e) => this.fail(e) });
+  }
+
+  private fail(e: unknown): void {
+    this.error.set(errorMessage(e));
+    this.busy.set(false);
   }
 }

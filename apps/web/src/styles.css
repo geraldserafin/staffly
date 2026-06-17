@@ -1,1 +1,186 @@
-/* You can add global styles to this file, and also import other style files */
+/*
+ * Structural styling only — layout, spacing, and state affordances. Deliberately
+ * neutral (system font, grayscale, one link accent); this is not the product's
+ * visual design, just a readable scaffold over the click-through UI.
+ */
+
+:root {
+  --gap: 0.75rem;
+  --radius: 6px;
+  --border: #d0d0d0;
+  --muted: #666;
+  --bg-soft: #f6f6f6;
+  --accent: #2b6cb0;
+  --danger: #b00020;
+  --max-width: 70rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #1a1a1a;
+}
+
+/* Layout ------------------------------------------------------------------- */
+
+main {
+  display: block;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: var(--gap);
+}
+
+section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--gap);
+  margin: var(--gap) 0;
+}
+
+section > h3 {
+  margin-top: 0;
+}
+
+/* App header / nav */
+header {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-soft);
+}
+
+header nav {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0.5rem var(--gap);
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap);
+}
+
+header .brand {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+header .crumbs {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* Forms -------------------------------------------------------------------- */
+
+form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--gap);
+  margin: var(--gap) 0;
+}
+
+label {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+input,
+select {
+  font: inherit;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+input.ng-invalid.ng-touched {
+  border-color: var(--danger);
+}
+
+button {
+  font: inherit;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: var(--bg-soft);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Lists & tables ----------------------------------------------------------- */
+
+ul {
+  list-style: none;
+  margin: var(--gap) 0;
+  padding: 0;
+}
+
+li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid #eee;
+}
+
+li:last-child {
+  border-bottom: none;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th,
+td {
+  border: 1px solid var(--border);
+  padding: 0.3rem 0.5rem;
+  text-align: left;
+}
+
+a {
+  color: var(--accent);
+}
+
+small,
+.muted {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+pre {
+  background: var(--bg-soft);
+  padding: var(--gap);
+  border-radius: var(--radius);
+  overflow: auto;
+}
+
+/* States ------------------------------------------------------------------- */
+
+.error {
+  color: var(--danger);
+}
+
+.empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+[aria-busy='true'] {
+  opacity: 0.6;
+}
