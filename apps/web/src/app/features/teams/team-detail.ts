@@ -1,9 +1,10 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Member, Schedule, Team } from '../../core/models';
+import { Member, Schedule, ShiftTemplate, Team } from '../../core/models';
 import { MembersService } from '../members/members.service';
 import { SchedulingService } from '../scheduling/scheduling.service';
+import { ShiftTemplatesService } from '../shift-templates/shift-templates.service';
 import { TeamsService } from './teams.service';
 
 @Component({
@@ -41,6 +42,33 @@ import { TeamsService } from './teams.service';
       </section>
 
       <section>
+        <h3>Shift templates generating for this team</h3>
+        <ul>
+          @for (tpl of applicableTemplates(); track tpl.id) {
+            <li>
+              {{ tpl.name }} ({{ tpl.startTime }}–{{ tpl.endTime }})
+              @if (tpl.teamIds?.length) {
+                — scoped <button (click)="detachTemplate(tpl)">detach</button>
+              } @else {
+                — <em>all teams</em>
+              }
+            </li>
+          } @empty {
+            <li><em>None apply — attach one below, or create org-wide templates.</em></li>
+          }
+        </ul>
+        @if (otherTemplates().length) {
+          <p>Attach another:</p>
+          <ul>
+            @for (tpl of otherTemplates(); track tpl.id) {
+              <li>{{ tpl.name }} <button (click)="attachTemplate(tpl)">attach</button></li>
+            }
+          </ul>
+        }
+        <small>Templates generate shifts when a schedule is created or regenerated.</small>
+      </section>
+
+      <section>
         <h3>Schedules</h3>
         <form (submit)="createSchedule($event)">
           <input [(ngModel)]="sched.name" name="schedName" placeholder="Schedule name" required />
@@ -69,17 +97,25 @@ export class TeamDetail {
   private readonly teams = inject(TeamsService);
   private readonly membersService = inject(MembersService);
   private readonly scheduling = inject(SchedulingService);
+  private readonly templatesService = inject(ShiftTemplatesService);
 
   readonly teamId = input.required<string>();
   readonly team = signal<Team | null>(null);
   readonly teamMembers = signal<Member[]>([]);
   readonly orgMembers = signal<Member[]>([]);
   readonly schedules = signal<Schedule[]>([]);
+  readonly applicableTemplates = signal<ShiftTemplate[]>([]);
+  readonly orgTemplates = signal<ShiftTemplate[]>([]);
   readonly error = signal<string | null>(null);
 
   readonly attachable = computed(() => {
     const on = new Set(this.teamMembers().map((m) => m.id));
     return this.orgMembers().filter((m) => !on.has(m.id));
+  });
+
+  readonly otherTemplates = computed(() => {
+    const applied = new Set(this.applicableTemplates().map((t) => t.id));
+    return this.orgTemplates().filter((t) => !applied.has(t.id));
   });
 
   rules: { min_rest_hours: number | null; max_hours_per_week: number | null; max_consecutive_days: number | null } = {
@@ -94,9 +130,11 @@ export class TeamDetail {
     this.teams.get(this.teamId()).subscribe((t) => {
       this.team.set(t);
       this.membersService.listByOrg(t.organizationId).subscribe((m) => this.orgMembers.set(m));
+      this.templatesService.listByOrg(t.organizationId).subscribe((tpl) => this.orgTemplates.set(tpl));
     });
     this.loadMembers();
     this.loadSchedules();
+    this.loadTemplates();
     this.scheduling.rules(this.teamId()).subscribe({
       next: (r) =>
         (this.rules = {
@@ -113,6 +151,16 @@ export class TeamDetail {
   }
   private loadSchedules(): void {
     this.scheduling.listByTeam(this.teamId()).subscribe((s) => this.schedules.set(s));
+  }
+  private loadTemplates(): void {
+    this.templatesService.byTeam(this.teamId()).subscribe((t) => this.applicableTemplates.set(t));
+  }
+
+  attachTemplate(tpl: ShiftTemplate): void {
+    this.templatesService.attachToTeam(this.teamId(), tpl.id).subscribe(() => this.loadTemplates());
+  }
+  detachTemplate(tpl: ShiftTemplate): void {
+    this.templatesService.detachFromTeam(this.teamId(), tpl.id).subscribe(() => this.loadTemplates());
   }
 
   saveRules(): void {

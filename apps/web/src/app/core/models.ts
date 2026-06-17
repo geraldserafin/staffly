@@ -60,7 +60,7 @@ export interface ShiftTemplateRequirement {
 export interface ShiftTemplate {
   id: string;
   organizationId: string;
-  teamId: string | null;
+  teamIds?: string[]; // empty/absent = applies to all the org's teams
   name: string;
   category: string | null;
   startTime: string;

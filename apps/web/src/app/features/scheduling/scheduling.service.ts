@@ -55,6 +55,11 @@ export class SchedulingService {
     return this.api.delete(`schedules/${id}`);
   }
 
+  /** Re-run template expansion into an existing schedule (after templates change). */
+  regenerate(id: string): Observable<Schedule> {
+    return this.api.post<Schedule>(`schedules/${id}/shifts/generate`);
+  }
+
   publish(id: string): Observable<Schedule> {
     return this.api.post<Schedule>(`schedules/${id}/publish`);
   }

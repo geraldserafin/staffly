@@ -9,7 +9,7 @@ export interface ShiftTemplateInput {
   start_time: string; // H:i
   end_time: string;
   rest_hours_after?: number | null;
-  team_id?: string | null;
+  team_ids?: string[] | null; // empty/absent = all teams
   recurrence_frequency?: 'weekly' | 'monthly' | null;
   recurrence_days?: number[] | null;
 }
@@ -47,5 +47,18 @@ export class ShiftTemplatesService {
 
   removeRequirement(requirementId: string): Observable<void> {
     return this.api.delete(`shift-template-requirements/${requirementId}`);
+  }
+
+  // Team scoping
+  byTeam(teamId: string): Observable<ShiftTemplate[]> {
+    return this.api.list<ShiftTemplate>(`teams/${teamId}/shift-templates`);
+  }
+
+  attachToTeam(teamId: string, templateId: string): Observable<ShiftTemplate> {
+    return this.api.put<ShiftTemplate>(`teams/${teamId}/shift-templates/${templateId}`, {});
+  }
+
+  detachFromTeam(teamId: string, templateId: string): Observable<void> {
+    return this.api.delete(`teams/${teamId}/shift-templates/${templateId}`);
   }
 }

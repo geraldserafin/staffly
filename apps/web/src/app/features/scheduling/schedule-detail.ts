@@ -73,6 +73,8 @@ import { SchedulingService } from './scheduling.service';
 
       <section>
         <h3>Shifts</h3>
+        <button (click)="regenerate()">Regenerate from templates</button>
+        <small>(replaces template-generated shifts; keeps manual ones)</small>
         <form (submit)="addShift($event)">
           <input [(ngModel)]="sh.name" name="shName" placeholder="name" required />
           <input [(ngModel)]="sh.category" name="shCat" placeholder="category" />
@@ -242,6 +244,10 @@ export class ScheduleDetail {
   }
   deleteShift(shift: ScheduledShift): void {
     this.scheduling.deleteShift(shift.id).subscribe(() => this.loadShifts());
+  }
+
+  regenerate(): void {
+    this.scheduling.regenerate(this.scheduleId()).subscribe(() => this.loadShifts());
   }
 
   addReq(shift: ScheduledShift): void {
