@@ -23,6 +23,7 @@ class ScheduleInsightsTest extends TestCase
     public function test_insights_report_workload_gaps_and_fairness(): void
     {
         $team = Team::factory()->create();
+        $this->actingAsOwner($team->organization);
         $cook = Skill::factory()->create();
         $bar = Skill::factory()->create();
 
@@ -99,6 +100,7 @@ class ScheduleInsightsTest extends TestCase
     public function test_insights_without_a_solve_report_null_satisfaction(): void
     {
         $team = Team::factory()->create();
+        $this->actingAsOwner($team->organization);
         $member = Member::factory()->create();
         $team->members()->attach($member);
         $schedule = Schedule::factory()->create(['team_id' => $team->id]);

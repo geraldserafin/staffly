@@ -34,6 +34,7 @@ class ManualAssignmentTest extends TestCase
         $team = Team::factory()->create();
         $member = Member::factory()->create();
         $team->members()->attach($member);
+        $this->actingAsOwner($team->organization);
         $shift = $this->shift($team, '2026-06-15 09:00:00', '2026-06-15 17:00:00');
 
         $this->assign($shift, $member)->assertStatus(201);
@@ -43,6 +44,7 @@ class ManualAssignmentTest extends TestCase
     {
         $team = Team::factory()->create();
         $member = Member::factory()->create(); // not attached to the team
+        $this->actingAsOwner($team->organization);
         $shift = $this->shift($team, '2026-06-15 09:00:00', '2026-06-15 17:00:00');
 
         $this->assign($shift, $member)
@@ -55,6 +57,7 @@ class ManualAssignmentTest extends TestCase
         $team = Team::factory()->create();
         $member = Member::factory()->create();
         $team->members()->attach($member);
+        $this->actingAsOwner($team->organization);
         $shift = $this->shift($team, '2026-06-15 09:00:00', '2026-06-15 17:00:00');
 
         $this->assign($shift, $member)->assertStatus(201);
@@ -71,6 +74,7 @@ class ManualAssignmentTest extends TestCase
         $teamB = Team::factory()->create();
         $teamA->members()->attach($member);
         $teamB->members()->attach($member);
+        $this->actingAsOwner($teamA->organization);
 
         $shiftA = $this->shift($teamA, '2026-06-15 09:00:00', '2026-06-15 17:00:00');
         $shiftB = $this->shift($teamB, '2026-06-15 12:00:00', '2026-06-15 20:00:00'); // overlaps A
@@ -88,6 +92,7 @@ class ManualAssignmentTest extends TestCase
         $teamB = Team::factory()->create();
         $teamA->members()->attach($member);
         $teamB->members()->attach($member);
+        $this->actingAsOwner($teamA->organization);
 
         $shiftA = $this->shift($teamA, '2026-06-15 09:00:00', '2026-06-15 17:00:00');
         $shiftB = $this->shift($teamB, '2026-06-15 18:00:00', '2026-06-15 22:00:00'); // after A

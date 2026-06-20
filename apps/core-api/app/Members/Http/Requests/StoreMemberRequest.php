@@ -18,6 +18,11 @@ class StoreMemberRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
+            'priority' => ['sometimes', 'integer', 'min:1'],
+            'role' => ['sometimes', 'string', 'in:owner,manager,member'],
+            'teamIds' => ['sometimes', 'array'],
+            'teamIds.*' => ['string', 'uuid'],
         ];
     }
 }

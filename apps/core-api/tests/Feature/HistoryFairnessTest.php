@@ -22,6 +22,7 @@ class HistoryFairnessTest extends TestCase
     {
         // Defaults: window=3, decay=0.5.
         $team = Team::factory()->create();
+        $this->actingAsOwner($team->organization);
         $member = Member::factory()->create();
         $team->members()->attach($member);
 
@@ -65,6 +66,7 @@ class HistoryFairnessTest extends TestCase
     public function test_publish_snapshots_realised_dissatisfaction_from_latest_run(): void
     {
         $team = Team::factory()->create();
+        $this->actingAsOwner($team->organization);
         $member = Member::factory()->create();
         $schedule = Schedule::factory()->create([
             'team_id' => $team->id,
@@ -99,6 +101,7 @@ class HistoryFairnessTest extends TestCase
     public function test_publish_without_dissatisfaction_diagnostics_records_nothing(): void
     {
         $schedule = Schedule::factory()->create();
+        $this->actingAsOwner($schedule->team->organization);
         $this->solveRun($schedule, SolveStatus::Succeeded, ['solver' => 'cp-sat']);
 
         app(PublishSchedule::class)->handle($schedule);

@@ -21,6 +21,7 @@ class MemberFactory extends Factory
         return [
             'organization_id' => Organization::factory(),
             'name' => fake()->name(),
+            'email' => fake()->safeEmail(),
         ];
     }
 }

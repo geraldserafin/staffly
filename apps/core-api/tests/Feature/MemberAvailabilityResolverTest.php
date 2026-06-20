@@ -24,6 +24,7 @@ class MemberAvailabilityResolverTest extends TestCase
         parent::setUp();
         $this->resolver = new MemberAvailabilityResolver;
         $this->member = Member::factory()->create();
+        $this->actingAsOwner($this->member->organization);
     }
 
     // 2026-06-15 is a Monday → 20 = Sat, 21 = Sun.

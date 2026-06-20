@@ -2,6 +2,7 @@
 
 return [
     App\Providers\AppServiceProvider::class,
+    App\Auth\AuthServiceProvider::class,
     App\Organizations\OrganizationServiceProvider::class,
     App\Members\MemberServiceProvider::class,
     App\Teams\TeamServiceProvider::class,

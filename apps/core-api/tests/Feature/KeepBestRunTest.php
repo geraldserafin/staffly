@@ -24,6 +24,7 @@ class KeepBestRunTest extends TestCase
         $team->members()->attach($member);
 
         $schedule = Schedule::factory()->create(['team_id' => $team->id]);
+        $this->actingAsOwner($team->organization);
         $shift = ScheduledShift::factory()->create([
             'schedule_id' => $schedule->id,
             'start_at' => '2026-06-15 09:00:00',
@@ -43,6 +44,7 @@ class KeepBestRunTest extends TestCase
     public function test_runs_are_listed_newest_first(): void
     {
         $schedule = Schedule::factory()->create();
+        $this->actingAsOwner($schedule->team->organization);
         $older = $this->makeRun($schedule, '2026-06-16 09:00:00');
         $newer = $this->makeRun($schedule, '2026-06-16 10:00:00');
 
@@ -55,6 +57,7 @@ class KeepBestRunTest extends TestCase
     public function test_apply_run_restores_its_snapshot_to_the_draft(): void
     {
         $schedule = Schedule::factory()->create();
+        $this->actingAsOwner($schedule->team->organization);
         $shift = ScheduledShift::factory()->create(['schedule_id' => $schedule->id]);
         $member = Member::factory()->create();
 
@@ -76,6 +79,7 @@ class KeepBestRunTest extends TestCase
     public function test_apply_keeps_locked_assignments(): void
     {
         $schedule = Schedule::factory()->create();
+        $this->actingAsOwner($schedule->team->organization);
         $lockedShift = ScheduledShift::factory()->create(['schedule_id' => $schedule->id]);
         $snapshotShift = ScheduledShift::factory()->create(['schedule_id' => $schedule->id]);
         $lockedMember = Member::factory()->create();
@@ -108,6 +112,7 @@ class KeepBestRunTest extends TestCase
     public function test_applying_a_run_without_a_snapshot_is_rejected(): void
     {
         $schedule = Schedule::factory()->create();
+        $this->actingAsOwner($schedule->team->organization);
         $run = $this->makeRun($schedule, '2026-06-16 09:00:00', null, SolveStatus::Pending);
 
         $this->postJson("solve-runs/{$run->id}/apply")->assertStatus(422);

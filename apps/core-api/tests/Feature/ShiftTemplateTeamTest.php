@@ -17,6 +17,7 @@ class ShiftTemplateTeamTest extends TestCase
     public function test_global_template_applies_to_every_team_until_scoped(): void
     {
         $org = Organization::factory()->create();
+        $this->actingAsOwner($org);
         $teamA = Team::factory()->create(['organization_id' => $org->id]);
         $teamB = Team::factory()->create(['organization_id' => $org->id]);
         $template = ShiftTemplate::factory()->create(['organization_id' => $org->id]);
@@ -40,8 +41,11 @@ class ShiftTemplateTeamTest extends TestCase
 
     public function test_attaching_a_template_across_orgs_is_rejected(): void
     {
-        $template = ShiftTemplate::factory()->create(['organization_id' => Organization::factory()->create()->id]);
-        $foreignTeam = Team::factory()->create(['organization_id' => Organization::factory()->create()->id]);
+        $templateOrg = Organization::factory()->create();
+        $template = ShiftTemplate::factory()->create(['organization_id' => $templateOrg->id]);
+        $foreignOrg = Organization::factory()->create();
+        $foreignTeam = Team::factory()->create(['organization_id' => $foreignOrg->id]);
+        $this->actingAsOwner($foreignOrg);
 
         $this->putJson("teams/{$foreignTeam->id}/shift-templates/{$template->id}")->assertStatus(422);
     }
@@ -49,6 +53,7 @@ class ShiftTemplateTeamTest extends TestCase
     public function test_regenerate_pulls_templates_into_an_existing_schedule(): void
     {
         $org = Organization::factory()->create();
+        $this->actingAsOwner($org);
         $team = Team::factory()->create(['organization_id' => $org->id]);
         // Schedule created (factory) before any template exists -> no shifts.
         $schedule = Schedule::factory()->create([

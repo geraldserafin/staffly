@@ -23,6 +23,7 @@ class PreviewSolveTest extends TestCase
         $team->members()->attach($member);
 
         $schedule = Schedule::factory()->create(['team_id' => $team->id]);
+        $this->actingAsOwner($team->organization);
         $shift = ScheduledShift::factory()->create([
             'schedule_id' => $schedule->id,
             'start_at' => '2026-06-15 09:00:00',
@@ -61,6 +62,7 @@ class PreviewSolveTest extends TestCase
     public function test_preview_rejects_out_of_range_lambda(): void
     {
         $schedule = Schedule::factory()->create();
+        $this->actingAsOwner($schedule->team->organization);
 
         $this->postJson("schedules/{$schedule->id}/solve/preview", ['lambda' => 1.5])
             ->assertStatus(422)

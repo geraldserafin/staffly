@@ -16,7 +16,15 @@ class MemberResource extends JsonResource
             'id' => $this->id,
             'organizationId' => $this->organization_id,
             'name' => $this->name,
+            'email' => $this->email,
             'priority' => $this->priority,
+            'role' => $this->role,
+            'userId' => $this->user_id,
+            'invitationAcceptedAt' => $this->invitation_accepted_at,
+            'teams' => $this->whenLoaded('teams', fn () => $this->teams->map(fn ($t) => [
+                'id' => $t->id,
+                'name' => $t->name,
+            ])),
             'createdAt' => $this->created_at,
             'updatedAt' => $this->updated_at,
         ];

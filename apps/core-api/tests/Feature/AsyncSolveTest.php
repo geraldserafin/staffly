@@ -25,6 +25,7 @@ class AsyncSolveTest extends TestCase
     {
         Queue::fake();
         $schedule = Schedule::factory()->create();
+        $this->actingAsOwner($schedule->team->organization);
 
         $response = $this->postJson("schedules/{$schedule->id}/solve");
 
@@ -43,6 +44,7 @@ class AsyncSolveTest extends TestCase
         $team->members()->attach($member);
 
         $schedule = Schedule::factory()->create(['team_id' => $team->id]);
+        $this->actingAsOwner($team->organization);
         $shift = ScheduledShift::factory()->create([
             'schedule_id' => $schedule->id,
             'start_at' => '2026-06-15 09:00:00',
@@ -72,6 +74,7 @@ class AsyncSolveTest extends TestCase
         });
 
         $schedule = Schedule::factory()->create();
+        $this->actingAsOwner($schedule->team->organization);
 
         $this->postJson("schedules/{$schedule->id}/solve")->assertStatus(202);
 

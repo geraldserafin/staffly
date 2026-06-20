@@ -15,6 +15,8 @@ class ListOrganizationMembers
     {
         return (new Member)->newQuery()
             ->where('organization_id', $organization->getKey())
+            ->with('teams')
+            ->orderBy('name')
             ->get();
     }
 }
