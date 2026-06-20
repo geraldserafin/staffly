@@ -1,9 +1,12 @@
-<header>
-  <nav>
-    <a class="brand" routerLink="/orgs">Staffly</a>
-    <span class="crumbs">shift scheduling</span>
-  </nav>
-</header>
-<main>
-  <router-outlet />
-</main>
+@if (showShell()) {
+  <div class="app-shell">
+    <app-sidebar />
+    <main class="app-content">
+      <router-outlet />
+    </main>
+  </div>
+} @else {
+  <main class="auth-layout">
+    <router-outlet />
+  </main>
+}

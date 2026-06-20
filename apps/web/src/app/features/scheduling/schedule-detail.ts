@@ -2,6 +2,7 @@ import { Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { errorMessage } from '../../core/errors';
+import { Icon } from '../../ui/icon';
 import {
   Insights,
   Member,
@@ -20,22 +21,37 @@ type Tab = 'roster' | 'shifts' | 'runs' | 'insights' | 'tuning';
 
 @Component({
   selector: 'app-schedule-detail',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, Icon],
   template: `
-    <a class="muted" routerLink="..">‹ Schedules</a>
+    <nav class="breadcrumb">
+      <a routerLink="..">Schedules</a>
+      <span class="sep">/</span>
+      <span class="current">{{ schedule()?.name ?? 'Schedule' }}</span>
+    </nav>
 
     @if (schedule(); as s) {
       <header class="page-head">
         <div>
           <h2>{{ s.name }}</h2>
-          <p class="muted">{{ s.startDate }} → {{ s.endDate }} · <span class="badge">{{ s.status }}</span></p>
+          <p class="subtitle">
+            {{ s.startDate }} → {{ s.endDate }}
+            <span class="badge" [class.draft]="s.status === 'draft'"
+                  [class.published]="s.status === 'published'"
+                  [class.archived]="s.status === 'archived'">{{ s.status }}</span>
+          </p>
         </div>
         <div class="actions">
-          <button (click)="solve()" [disabled]="solving()">{{ solving() ? 'Solving…' : 'Solve' }}</button>
+          <button class="primary" (click)="solve()" [disabled]="solving()">
+            <app-icon name="play" [size]="15" />
+            {{ solving() ? 'Solving…' : 'Solve' }}
+          </button>
           <button (click)="publish()">Publish</button>
           <button (click)="archive()">Archive</button>
           @if (solveStatus()) {
-            <span class="muted">solve: {{ solveStatus() }}</span>
+            <span class="badge" [class.pending]="solveStatus() === 'pending'"
+                  [class.running]="solveStatus() === 'running'"
+                  [class.succeeded]="solveStatus() === 'succeeded'"
+                  [class.failed]="solveStatus() === 'failed'">{{ solveStatus() }}</span>
           }
         </div>
       </header>
@@ -94,105 +110,127 @@ type Tab = 'roster' | 'shifts' | 'runs' | 'insights' | 'tuning';
 
         @case ('shifts') {
           <section>
-            <div class="actions">
-              <button (click)="regenerate()">Regenerate from templates</button>
-              <small>replaces template-generated shifts; keeps manual ones</small>
+            <div class="actions" style="justify-content:space-between">
+              <button (click)="regenerate()">
+                <app-icon name="refresh" [size]="15" /> Regenerate from templates
+              </button>
+              <small class="muted">replaces template-generated shifts; keeps manual ones</small>
             </div>
 
-            <form (submit)="addShift($event)">
+            <form (submit)="addShift($event)" style="margin-top:1rem">
               <label>name <input [(ngModel)]="sh.name" name="shName" placeholder="name" required /></label>
-              <label>category <input [(ngModel)]="sh.category" name="shCat" placeholder="category" /></label>
               <label>start <input [(ngModel)]="sh.start_at" name="shStart" type="datetime-local" required /></label>
               <label>end <input [(ngModel)]="sh.end_at" name="shEnd" type="datetime-local" required /></label>
-              <label>rest h <input [(ngModel)]="sh.rest_hours_after" name="shRest" type="number" /></label>
-              <button type="submit">Add shift</button>
+              <label>rest h <input [(ngModel)]="sh.rest_hours_after" name="shRest" type="number" style="width:5rem" /></label>
+              <button type="submit" class="primary">Add shift</button>
             </form>
           </section>
 
           @for (shift of shifts(); track shift.id) {
-            <section class="shift">
-              <div class="actions">
-                <strong>{{ shift.name }}</strong>
-                <small>{{ shift.startAt }} → {{ shift.endAt }}</small>
-                <button (click)="deleteShift(shift)">delete</button>
+            <section>
+              <div class="actions" style="justify-content:space-between;margin-bottom:.75rem">
+                <div>
+                  <strong>{{ shift.name }}</strong>
+                  <span class="muted" style="margin-left:.5rem">{{ shift.startAt }} → {{ shift.endAt }}</span>
+                </div>
+                <button class="icon-btn" (click)="deleteShift(shift)" title="Delete shift">
+                  <app-icon name="trash" [size]="16" />
+                </button>
               </div>
 
               <div class="cols">
                 <div>
-                  <strong class="muted">Requirements</strong>
+                  <strong class="muted" style="display:block;margin-bottom:.4rem;font-size:.8rem;text-transform:uppercase;letter-spacing:.04em">Requirements</strong>
                   <ul>
                     @for (r of shift.requirements; track r.id) {
                       <li>
-                        {{ r.type }} · {{ skillName(r.skillId) }} · {{ r.count ?? '—' }}
-                        <button (click)="deleteReq(r.id)">x</button>
+                        <span class="badge">{{ r.type }}</span>
+                        <span class="muted">{{ skillName(r.skillId) }}</span>
+                        <span class="muted">×{{ r.count ?? '—' }}</span>
+                        <button class="icon-btn" style="margin-left:auto" (click)="deleteReq(r.id)" title="Remove">
+                          <app-icon name="x" [size]="15" />
+                        </button>
                       </li>
                     } @empty {
                       <li class="empty">None.</li>
                     }
                   </ul>
-                  <form (submit)="$event.preventDefault(); addReq(shift)">
+                  <form (submit)="$event.preventDefault(); addReq(shift)" class="actions" style="margin-top:.5rem">
                     <select [(ngModel)]="reqType[shift.id]" [name]="'rt' + shift.id">
                       <option value="headcount">headcount</option>
                       <option value="coverage">coverage</option>
                     </select>
-                    <select [(ngModel)]="reqSkill[shift.id]" [name]="'rs' + shift.id">
+                    <select [(ngModel)]="reqSkill[shift.id]" [name]="'rs' + shift.id" style="min-width:8rem">
                       <option [ngValue]="null">Any</option>
                       @for (sk of skills(); track sk.id) {
                         <option [ngValue]="sk.id">{{ sk.name }}</option>
                       }
                     </select>
-                    <input [(ngModel)]="reqCount[shift.id]" [name]="'rc' + shift.id" type="number" placeholder="count" />
-                    <button type="submit">+ req</button>
+                    <input [(ngModel)]="reqCount[shift.id]" [name]="'rc' + shift.id" type="number" placeholder="count" style="width:5rem" />
+                    <button type="submit" class="primary sm">+ req</button>
                   </form>
                 </div>
 
                 <div>
-                  <strong class="muted">Assignments</strong>
+                  <strong class="muted" style="display:block;margin-bottom:.4rem;font-size:.8rem;text-transform:uppercase;letter-spacing:.04em">Assignments</strong>
                   <ul>
                     @for (a of shift.assignments; track a.id) {
                       <li>
-                        {{ memberName(a.memberId) }} {{ a.locked ? '🔒' : '' }}
-                        <button (click)="toggleLock(a)">{{ a.locked ? 'unlock' : 'lock' }}</button>
-                        <button (click)="unassign(shift, a.memberId)">remove</button>
+                        <span>{{ memberName(a.memberId) }}</span>
+                        @if (a.locked) {
+                          <app-icon name="lock" [size]="13" />
+                        }
+                        <button class="sm" style="margin-left:auto" (click)="toggleLock(a)">
+                          {{ a.locked ? 'Unlock' : 'Lock' }}
+                        </button>
+                        <button class="icon-btn" (click)="unassign(shift, a.memberId)" title="Remove">
+                          <app-icon name="x" [size]="15" />
+                        </button>
                       </li>
                     } @empty {
                       <li class="empty">Unassigned.</li>
                     }
                   </ul>
-                  <form (submit)="$event.preventDefault(); assign(shift)">
-                    <select [(ngModel)]="assignMember[shift.id]" [name]="'am' + shift.id">
+                  <form (submit)="$event.preventDefault(); assign(shift)" class="actions" style="margin-top:.5rem">
+                    <select [(ngModel)]="assignMember[shift.id]" [name]="'am' + shift.id" style="min-width:10rem">
                       <option [ngValue]="null">— member —</option>
                       @for (m of teamMembers(); track m.id) {
                         <option [ngValue]="m.id">{{ m.name }}</option>
                       }
                     </select>
-                    <button type="submit">assign</button>
+                    <button type="submit" class="primary sm" [disabled]="!assignMember[shift.id]">Assign</button>
                   </form>
                 </div>
               </div>
             </section>
           } @empty {
-            <p class="empty">No shifts — regenerate from templates or add one above.</p>
+            <section><p class="empty">No shifts — regenerate from templates or add one above.</p></section>
           }
         }
 
         @case ('runs') {
           <section>
-            <div class="actions">
-              <button (click)="loadRuns()">Refresh</button>
+            <div class="actions" style="justify-content:space-between;margin-bottom:.5rem">
+              <h3 style="margin:0">Solve runs</h3>
+              <button class="ghost sm" (click)="loadRuns()">
+                <app-icon name="refresh" [size]="14" /> Refresh
+              </button>
             </div>
             <ul>
               @for (r of runs(); track r.id) {
                 <li>
-                  <span class="badge">{{ r.status }}</span>
-                  <small>{{ r.createdAt }}</small>
+                  <span class="badge" [class.pending]="r.status === 'pending'"
+                        [class.running]="r.status === 'running'"
+                        [class.succeeded]="r.status === 'succeeded'"
+                        [class.failed]="r.status === 'failed'">{{ r.status }}</span>
+                  <span class="muted">{{ r.createdAt }}</span>
                   @if (r.resultSnapshot) {
-                    <small>{{ r.resultSnapshot.length }} assignments</small>
-                    <button (click)="applyRun(r)">apply</button>
+                    <span class="chip">{{ r.resultSnapshot.length }} assignments</span>
+                    <button class="primary sm" style="margin-left:auto" (click)="applyRun(r)">Apply</button>
                   }
                 </li>
               } @empty {
-                <li class="empty">No runs yet.</li>
+                <li class="empty">No runs yet — hit Solve to start one.</li>
               }
             </ul>
           </section>
@@ -200,8 +238,11 @@ type Tab = 'roster' | 'shifts' | 'runs' | 'insights' | 'tuning';
 
         @case ('insights') {
           <section>
-            <div class="actions">
-              <button (click)="loadInsights()">Refresh</button>
+            <div class="actions" style="justify-content:space-between;margin-bottom:.75rem">
+              <h3 style="margin:0">Insights</h3>
+              <button class="ghost sm" (click)="loadInsights()">
+                <app-icon name="refresh" [size]="14" /> Refresh
+              </button>
             </div>
             @if (insights(); as i) {
               <table>
@@ -219,23 +260,28 @@ type Tab = 'roster' | 'shifts' | 'runs' | 'insights' | 'tuning';
                   }
                 </tbody>
               </table>
-              <p class="muted">
-                gaps: {{ i.staffingGaps.length }} · fairness max {{ i.fairness.maxDissatisfaction }}
-                (from last solve: {{ i.fairness.fromLastSolve }})
+              <p class="muted" style="margin-top:.75rem">
+                Gaps: {{ i.staffingGaps.length }} · fairness max {{ i.fairness.maxDissatisfaction }}
+                · from last solve: {{ i.fairness.fromLastSolve }}
               </p>
             } @else {
-              <p class="empty">No insights loaded.</p>
+              <p class="empty">No insights loaded — refresh to compute.</p>
             }
           </section>
         }
 
         @case ('tuning') {
           <section>
-            <h3>Preview (live λ)</h3>
-            <p class="muted">Try a fairness λ (0 = efficiency, 1 = equity) without writing assignments.</p>
-            <form (submit)="$event.preventDefault(); preview()">
-              <label>λ <input type="number" step="0.1" min="0" max="1" [(ngModel)]="lambda" name="lambda" /></label>
-              <button type="submit">Preview</button>
+            <h3>Fairness tuning (live preview)</h3>
+            <p class="card-sub">Try a fairness λ without writing assignments. 0 = efficiency, 1 = equity.</p>
+            <form (submit)="$event.preventDefault(); preview()" class="actions">
+              <label style="flex-direction:row;align-items:center;gap:.4rem">
+                <span class="muted">λ</span>
+                <input type="number" step="0.1" min="0" max="1" [(ngModel)]="lambda" name="lambda" style="width:5rem" />
+              </label>
+              <button type="submit" class="primary">
+                <app-icon name="eye" [size]="15" /> Preview
+              </button>
             </form>
             @if (previewResult(); as p) {
               <pre>{{ summary(p) }}</pre>
@@ -299,7 +345,7 @@ export class ScheduleDetail {
   readonly legend = computed(() => {
     const seen = new Map<string, string>();
     for (const sh of this.shifts()) {
-      const label = sh.category ?? sh.name;
+      const label = sh.name;
       if (label) {
         seen.set(this.initial(sh), label);
       }
@@ -308,7 +354,7 @@ export class ScheduleDetail {
   });
 
   lambda = 0.3;
-  sh = { name: '', category: '', start_at: '', end_at: '', rest_hours_after: null as number | null };
+  sh = { name: '', start_at: '', end_at: '', rest_hours_after: null as number | null };
   reqType: Record<string, RequirementType> = {};
   reqSkill: Record<string, string | null> = {};
   reqCount: Record<string, number | null> = {};
@@ -360,7 +406,7 @@ export class ScheduleDetail {
     return out;
   }
   private initial(sh: ScheduledShift): string {
-    return (sh.category ?? sh.name ?? '?').charAt(0).toUpperCase();
+    return (sh.name ?? '?').charAt(0).toUpperCase();
   }
   weekday(date: string): string {
     return new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short' });
@@ -422,7 +468,7 @@ export class ScheduleDetail {
     this.error.set(null);
     this.scheduling.addShift(this.scheduleId(), { ...this.sh }).subscribe({
       next: () => {
-        this.sh = { name: '', category: '', start_at: '', end_at: '', rest_hours_after: null };
+        this.sh = { name: '', start_at: '', end_at: '', rest_hours_after: null };
         this.loadShifts();
       },
       error: (e) => this.error.set(errorMessage(e)),

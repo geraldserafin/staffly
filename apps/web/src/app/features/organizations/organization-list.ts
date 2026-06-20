@@ -1,15 +1,22 @@
 import { Component, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { errorMessage } from '../../core/errors';
 import { Organization } from '../../core/models';
+import { Icon } from '../../ui/icon';
 import { CrudList } from '../../ui/crud-list';
 import { OrganizationsService } from './organizations.service';
 
 @Component({
   selector: 'app-organization-list',
-  imports: [CrudList, RouterLink],
+  imports: [CrudList, RouterLink, Icon],
   template: `
-    <h2>Organizations</h2>
+    <header class="page-head">
+      <div>
+        <h2>Organizations</h2>
+        <p class="subtitle">Pick an organization to manage its teams and schedules, or create a new one.</p>
+      </div>
+    </header>
+
     <app-crud-list
       heading="All organizations"
       placeholder="New organization name"
@@ -21,15 +28,17 @@ import { OrganizationsService } from './organizations.service';
       (add)="create($event)"
     >
       <ng-template let-org>
-        <a [routerLink]="['/orgs', org.id]">{{ org.name }}</a>
-        <small>({{ org.payrollPeriod }})</small>
-        <button (click)="remove(org)">delete</button>
+        <a [routerLink]="['/orgs', org.id, 'dashboard']" style="font-weight:600">{{ org.name }}</a>
+        <button class="icon-btn" style="margin-left:auto" (click)="remove(org)" title="Delete">
+          <app-icon name="trash" [size]="16" />
+        </button>
       </ng-template>
     </app-crud-list>
   `,
 })
 export class OrganizationList {
   private readonly service = inject(OrganizationsService);
+  private readonly router = inject(Router);
   readonly organizations = signal<Organization[]>([]);
   readonly busy = signal(false);
   readonly error = signal<string | null>(null);
@@ -44,6 +53,9 @@ export class OrganizationList {
       next: (orgs) => {
         this.organizations.set(orgs);
         this.busy.set(false);
+        if (orgs.length === 0) {
+          this.router.navigate(['/onboarding']);
+        }
       },
       error: (e) => this.fail(e),
     });

@@ -20,13 +20,16 @@ import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
     <section [attr.aria-busy]="busy()">
       <h3>{{ heading() }}</h3>
 
-      <form (submit)="submit($event)">
+      <form (submit)="submit($event)" class="crud-form">
         <input
+          class="crud-input"
           [formControl]="name"
           [placeholder]="placeholder()"
           [attr.aria-label]="placeholder()"
         />
-        <button type="submit" [disabled]="name.invalid || busy()">{{ addLabel() }}</button>
+        <button type="submit" class="primary" [disabled]="name.invalid || busy()">
+          <ng-content select="[add-icon]" />{{ addLabel() }}
+        </button>
       </form>
 
       @if (error()) {

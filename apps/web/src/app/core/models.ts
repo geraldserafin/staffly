@@ -1,6 +1,5 @@
 // TypeScript mirrors of the core-api JSON resources (camelCase keys as emitted).
 
-export type PayrollPeriod = 'week' | 'biweekly' | 'month';
 export type ScheduleStatus = 'draft' | 'published' | 'archived';
 export type SolveStatus = 'pending' | 'running' | 'succeeded' | 'failed';
 export type RequirementType = 'headcount' | 'coverage';
@@ -15,19 +14,43 @@ export type PreferenceType =
   | 'preferred_days_off';
 export type AvailabilityKind = 'available' | 'unavailable';
 
+export interface MemberShift {
+  shiftId: string;
+  shiftName: string;
+  startAt: string;
+  endAt: string;
+  scheduleId: string;
+  scheduleName: string;
+  scheduleStatus: ScheduleStatus;
+  teamId: string;
+  teamName: string;
+  locked: boolean;
+}
+
 export interface Organization {
   id: string;
   name: string;
-  payrollPeriod: PayrollPeriod;
   createdAt: string;
   updatedAt: string;
+}
+
+export type MemberRole = 'owner' | 'manager' | 'member';
+
+export interface MemberTeam {
+  id: string;
+  name: string;
 }
 
 export interface Member {
   id: string;
   organizationId: string;
   name: string;
+  email: string | null;
   priority: number;
+  role: MemberRole;
+  userId: number | null;
+  invitationAcceptedAt: string | null;
+  teams?: MemberTeam[];
   createdAt: string;
   updatedAt: string;
 }
@@ -62,7 +85,6 @@ export interface ShiftTemplate {
   organizationId: string;
   teamIds?: string[]; // empty/absent = applies to all the org's teams
   name: string;
-  category: string | null;
   startTime: string;
   endTime: string;
   restHoursAfter: number | null;
@@ -93,7 +115,6 @@ export interface ScheduledShift {
   scheduleId: string;
   shiftTemplateId: string | null;
   name: string;
-  category: string | null;
   startAt: string;
   endAt: string;
   restHoursAfter: number | null;

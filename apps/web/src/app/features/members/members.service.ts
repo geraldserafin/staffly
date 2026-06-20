@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { Api } from '../../core/api';
-import { Member } from '../../core/models';
+import { Member, MemberRole, MemberShift } from '../../core/models';
 
 @Injectable({ providedIn: 'root' })
 export class MembersService {
@@ -15,7 +15,15 @@ export class MembersService {
     return this.api.get<Member>(`members/${id}`);
   }
 
-  create(orgId: string, body: { name: string }): Observable<Member> {
+  shifts(id: string): Observable<MemberShift[]> {
+    // Endpoint returns a bare JSON array (no `{ data }` envelope), so use getRaw.
+    return this.api.getRaw<MemberShift[]>(`members/${id}/shifts`);
+  }
+
+  create(
+    orgId: string,
+    body: { name: string; email: string; role?: MemberRole; teamIds?: string[] },
+  ): Observable<Member> {
     return this.api.post<Member>(`organizations/${orgId}/members`, body);
   }
 

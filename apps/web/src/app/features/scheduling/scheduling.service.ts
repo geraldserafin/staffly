@@ -22,7 +22,6 @@ export interface ScheduleInput {
 
 export interface ShiftInput {
   name: string;
-  category?: string | null;
   start_at: string;
   end_at: string;
   rest_hours_after?: number | null;

@@ -2,26 +2,37 @@ import { Component, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { errorMessage } from '../../core/errors';
 import { Team } from '../../core/models';
+import { Icon } from '../../ui/icon';
 import { CrudList } from '../../ui/crud-list';
 import { TeamsService } from './teams.service';
 
 @Component({
   selector: 'app-teams-panel',
-  imports: [CrudList, RouterLink],
+  imports: [CrudList, RouterLink, Icon],
   template: `
+    <header class="page-head">
+      <div>
+        <h2>Teams</h2>
+        <p class="subtitle">Locations or schedulable groups. Open a team to manage its members and schedules.</p>
+      </div>
+    </header>
+
     <app-crud-list
-      heading="Teams"
+      heading="All teams"
       placeholder="Team name"
       addLabel="Add team"
-      emptyText="No teams."
+      emptyText="No teams yet."
       [items]="teams()"
       [busy]="busy()"
       [error]="error()"
       (add)="create($event)"
     >
       <ng-template let-t>
-        <a [routerLink]="[t.id]">{{ t.name }}</a>
-        <button (click)="remove(t)">delete</button>
+        <a [routerLink]="[t.id, 'dashboard']" style="font-weight:600">{{ t.name }}</a>
+        <span class="muted">→ dashboard</span>
+        <button class="icon-btn" style="margin-left:auto" (click)="remove(t)" title="Delete">
+          <app-icon name="trash" [size]="16" />
+        </button>
       </ng-template>
     </app-crud-list>
   `,

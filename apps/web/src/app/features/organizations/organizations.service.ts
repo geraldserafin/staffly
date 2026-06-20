@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { Api } from '../../core/api';
-import { Organization, PayrollPeriod } from '../../core/models';
+import { Organization } from '../../core/models';
 
 @Injectable({ providedIn: 'root' })
 export class OrganizationsService {
@@ -15,7 +15,7 @@ export class OrganizationsService {
     return this.api.get<Organization>(`organizations/${id}`);
   }
 
-  create(body: { name: string; payrollPeriod?: PayrollPeriod }): Observable<Organization> {
+  create(body: { name: string }): Observable<Organization> {
     return this.api.post<Organization>('organizations', body);
   }
 

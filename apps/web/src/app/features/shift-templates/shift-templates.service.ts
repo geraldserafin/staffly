@@ -5,7 +5,6 @@ import { RequirementType, ShiftTemplate } from '../../core/models';
 
 export interface ShiftTemplateInput {
   name: string;
-  category?: string | null;
   start_time: string; // H:i
   end_time: string;
   rest_hours_after?: number | null;
