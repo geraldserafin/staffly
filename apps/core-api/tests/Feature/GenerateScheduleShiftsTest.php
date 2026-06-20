@@ -29,6 +29,7 @@ class GenerateScheduleShiftsTest extends TestCase
     {
         parent::setUp();
         $this->org = Organization::factory()->create();
+        $this->actingAsOwner($this->org);
         $this->team = Team::factory()->create(['organization_id' => $this->org->id]);
         $this->schedule = Schedule::factory()->create([
             'team_id' => $this->team->id,
@@ -216,7 +217,6 @@ class GenerateScheduleShiftsTest extends TestCase
     {
         $this->template([
             'name' => 'Night Cook',
-            'category' => 'night',
             'rest_hours_after' => 11,
             'recurrence_days' => [1],
         ]);
@@ -225,7 +225,6 @@ class GenerateScheduleShiftsTest extends TestCase
 
         $shift = $this->shifts()->sole();
         $this->assertSame('Night Cook', $shift->name);
-        $this->assertSame('night', $shift->category);
         $this->assertSame(11, $shift->rest_hours_after);
     }
 }

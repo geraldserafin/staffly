@@ -203,9 +203,9 @@ def _cook():
     return [Requirement(type="headcount", skillId="cook", count=1)]
 
 
-def _day_shift(sid, date, cat="day"):
+def _day_shift(sid, date, template="day-tmpl"):
     return Shift(id=sid, startAt=f"{date}T09:00:00", endAt=f"{date}T17:00:00",
-                 category=cat, requirements=_cook())
+                 templateId=template, requirements=_cook())
 
 
 def test_max_consecutive_days_penalty_reported_when_unavoidable():
@@ -242,12 +242,15 @@ def test_max_consecutive_days_steers_to_break_runs():
 
 
 def test_avoid_fast_rotation_penalty_reported_when_unavoidable():
-    # Sole cook works a day shift then a night shift next day -> rotation penalty.
-    night = Shift(id="tue", startAt="2026-06-16T17:00:00", endAt="2026-06-16T23:00:00",
-                  category="night", requirements=_cook())
+    # Sole cook works a night shift then a morning shift the next day with only a
+    # few hours between -> hard start-time swing -> rotation penalty surfaces.
+    night = Shift(id="mon", startAt="2026-06-15T22:00:00", endAt="2026-06-16T06:00:00",
+                  templateId="night-tmpl", requirements=_cook())
+    morning = Shift(id="tue", startAt="2026-06-16T09:00:00", endAt="2026-06-16T17:00:00",
+                    templateId="day-tmpl", requirements=_cook())
     req = SolveRequest(
         scheduleId="s",
-        shifts=[_day_shift("mon", "2026-06-15"), night],
+        shifts=[night, morning],
         members=[Member(id="m1", skills=["cook"], eligibleShiftIds=["mon", "tue"],
                         preferences=[Preference(type="avoid_fast_rotation", weight=5)])],
     )
@@ -256,14 +259,16 @@ def test_avoid_fast_rotation_penalty_reported_when_unavoidable():
     assert res.diagnostics["memberDissatisfaction"]["m1"] > 0
 
 
-def test_avoid_fast_rotation_steers_to_split_categories():
-    # A day shift and a next-day night shift, two cooks; m1 avoids rotation ->
+def test_avoid_fast_rotation_steers_away_from_hard_swings():
+    # A night shift and a next-morning shift, two cooks; m1 avoids the swing ->
     # m1 does not take both.
-    night = Shift(id="tue", startAt="2026-06-16T17:00:00", endAt="2026-06-16T23:00:00",
-                  category="night", requirements=_cook())
+    night = Shift(id="mon", startAt="2026-06-15T22:00:00", endAt="2026-06-16T06:00:00",
+                  templateId="night-tmpl", requirements=_cook())
+    morning = Shift(id="tue", startAt="2026-06-16T09:00:00", endAt="2026-06-16T17:00:00",
+                    templateId="day-tmpl", requirements=_cook())
     req = SolveRequest(
         scheduleId="s",
-        shifts=[_day_shift("mon", "2026-06-15"), night],
+        shifts=[night, morning],
         members=[
             Member(id="m1", skills=["cook"], eligibleShiftIds=["mon", "tue"],
                    preferences=[Preference(type="avoid_fast_rotation", weight=5)]),

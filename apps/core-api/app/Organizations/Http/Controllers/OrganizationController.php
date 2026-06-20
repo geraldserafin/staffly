@@ -2,6 +2,9 @@
 
 namespace App\Organizations\Http\Controllers;
 
+use App\Auth\Actions\AssignRole;
+use App\Auth\Models\User;
+use App\Members\Models\Member;
 use App\Organizations\Actions\CreateOrganization;
 use App\Organizations\Actions\DeleteOrganization;
 use App\Organizations\Actions\ListOrganizations;
@@ -12,19 +15,38 @@ use App\Organizations\Http\Requests\UpdateOrganizationRequest;
 use App\Organizations\Http\Resources\OrganizationResource;
 use App\Organizations\Models\Organization;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 
 class OrganizationController
 {
-    public function index(ListOrganizations $action): AnonymousResourceCollection
+    public function __construct(
+        private readonly AssignRole $assignRole,
+    ) {}
+
+    public function index(Request $request, ListOrganizations $action): AnonymousResourceCollection
     {
-        return OrganizationResource::collection($action->handle());
+        return OrganizationResource::collection($action->handle($request->user()));
     }
 
     public function store(StoreOrganizationRequest $request, CreateOrganization $action): JsonResponse
     {
         $organization = $action->handle($request->validated());
+
+        /** @var User $user */
+        $user = $request->user();
+
+        Member::create([
+            'name' => $user->name,
+            'email' => $user->email,
+            'organization_id' => $organization->id,
+            'user_id' => $user->id,
+            'role' => 'owner',
+            'invitation_accepted_at' => now(),
+        ]);
+
+        $this->assignRole->handle($user, $organization->id, 'owner');
 
         return OrganizationResource::make($organization)
             ->response()

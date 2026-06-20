@@ -42,7 +42,7 @@ class SolveRequestBuilder
             'id' => $shift->id,
             'startAt' => $shift->start_at->toIso8601String(),
             'endAt' => $shift->end_at->toIso8601String(),
-            'category' => $shift->category,
+            'templateId' => $shift->shift_template_id,
             // Per-shift rest overrides the team default; null = no rest constraint.
             'restHoursAfter' => $shift->rest_hours_after ?? $defaultRest,
             'requirements' => $shift->requirements->map(fn ($requirement) => [
@@ -105,7 +105,6 @@ class SolveRequestBuilder
 
         return [
             'scheduleId' => $schedule->id,
-            'payrollPeriod' => $team->organization->payroll_period->value,
             'shifts' => $shifts,
             'members' => $members,
             'locked' => $locked,

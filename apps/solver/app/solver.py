@@ -30,13 +30,9 @@ def _parse(ts: str) -> datetime:
     return datetime.fromisoformat(ts)
 
 
-def _bucket(dt: datetime, period: str) -> tuple:
-    iso = dt.isocalendar()
-    if period == "week":
-        return (iso.year, iso.week)
-    if period == "biweekly":
-        return ("biweekly", (dt.date() - BIWEEKLY_ANCHOR).days // 14)
-    return (dt.year, dt.month)  # month
+def _bucket(dt: datetime) -> tuple:
+    """Bucket a shift start by calendar month for hours_target averaging."""
+    return (dt.year, dt.month)
 
 
 def solve_schedule(req: SolveRequest) -> SolveResponse:
@@ -49,10 +45,10 @@ def solve_schedule(req: SolveRequest) -> SolveResponse:
     rest = {s.id: (s.restHoursAfter or 0) for s in req.shifts}
     weekend = {s.id: start[s.id].isoweekday() >= 6 for s in req.shifts}
     weekday = {s.id: start[s.id].isoweekday() for s in req.shifts}
-    category = {s.id: s.category for s in req.shifts}
+    template_id = {s.id: s.templateId for s in req.shifts}
     # Duration in deci-hours (0.1h) keeps hour penalties integer with precision.
     dur = {s.id: round((end[s.id] - start[s.id]).total_seconds() / 360) for s in req.shifts}
-    bucket = {s.id: _bucket(start[s.id], req.payrollPeriod) for s in req.shifts}
+    bucket = {s.id: _bucket(start[s.id]) for s in req.shifts}
 
     def conflicts(a: str, b: str) -> bool:
         if start[a] <= start[b]:
@@ -121,7 +117,7 @@ def solve_schedule(req: SolveRequest) -> SolveResponse:
                 continue
             for sid in (s.id for s in req.shifts):
                 w = works.get((m.id, sid))
-                if w is None or not _hard_forbids(pref, sid, category, weekday, weekend):
+                if w is None or not _hard_forbids(pref, sid, template_id, weekday, weekend):
                     continue
                 model.Add(w == 0)
 
@@ -143,7 +139,7 @@ def solve_schedule(req: SolveRequest) -> SolveResponse:
     member_wd = {}  # member id -> linear expression
     prior = {m.id: max(0, m.priorDissatisfaction) for m in req.members}
     for m in req.members:
-        wd = _member_dissatisfaction(model, m, works, dur, bucket, weekend, weekday, category, start)
+        wd = _member_dissatisfaction(model, m, works, dur, bucket, weekend, weekday, template_id, start, end)
         if wd is not None:
             member_wd[m.id] = wd
 
@@ -206,10 +202,10 @@ def solve_schedule(req: SolveRequest) -> SolveResponse:
     )
 
 
-def _hard_forbids(pref, sid, category, weekday, weekend) -> bool:
+def _hard_forbids(pref, sid, template_id, weekday, weekend) -> bool:
     p = pref.params
     if pref.type == "preferred_shift_type":
-        return category[sid] != p.get("type")
+        return template_id[sid] not in (p.get("shiftIds") or [])
     if pref.type == "preferred_days_off":
         return weekday[sid] in (p.get("days") or [])
     if pref.type == "weekend":
@@ -217,7 +213,7 @@ def _hard_forbids(pref, sid, category, weekday, weekend) -> bool:
     return False
 
 
-def _member_dissatisfaction(model, member: Member, works, dur, bucket, weekend, weekday, category, start):
+def _member_dissatisfaction(model, member: Member, works, dur, bucket, weekend, weekday, template_id, start, end):
     """Linear expr = priority * Σ_p (normalised weight · normalised penalty). None if no soft prefs."""
     soft = [p for p in member.preferences if not p.effectiveHard]
     total_weight = sum(p.weight for p in soft)
@@ -228,7 +224,7 @@ def _member_dissatisfaction(model, member: Member, works, dur, bucket, weekend, 
     terms = []
 
     for pref in soft:
-        raw, norm = _penalty(model, pref, member, my_shifts, works, dur, bucket, weekend, weekday, category, start)
+        raw, norm = _penalty(model, pref, member, my_shifts, works, dur, bucket, weekend, weekday, template_id, start, end)
         if raw is None or norm <= 0:
             continue
         # coef folds priority, normalised weight and the per-type normaliser.
@@ -239,7 +235,7 @@ def _member_dissatisfaction(model, member: Member, works, dur, bucket, weekend, 
     return sum(terms) if terms else None
 
 
-def _penalty(model, pref, member, my_shifts, works, dur, bucket, weekend, weekday, category, start):
+def _penalty(model, pref, member, my_shifts, works, dur, bucket, weekend, weekday, template_id, start, end):
     """Return (raw_penalty_expr, normaliser) — raw is linear in the member's works vars."""
     p = pref.params
     w = lambda sid: works[(member.id, sid)]  # noqa: E731
@@ -255,8 +251,8 @@ def _penalty(model, pref, member, my_shifts, works, dur, bucket, weekend, weekda
         return (sum(w(sid) for sid in hit), len(hit)) if hit else (None, 0)
 
     if pref.type == "preferred_shift_type":
-        t = p.get("type")
-        hit = [sid for sid in my_shifts if category[sid] != t]
+        wanted = set(p.get("shiftIds") or [])
+        hit = [sid for sid in my_shifts if template_id[sid] not in wanted]
         return (sum(w(sid) for sid in hit), len(hit)) if hit else (None, 0)
 
     if pref.type == "hours_target":
@@ -297,26 +293,51 @@ def _penalty(model, pref, member, my_shifts, works, dur, bucket, weekend, weekda
     if pref.type == "avoid_fast_rotation":
         if not my_shifts:
             return (None, 0)
-        worked_cat = _worked_by_day_category(model, member, my_shifts, works, start, category)
-        cats_on = {}
-        for (day, cat) in worked_cat:
-            cats_on.setdefault(day, []).append(cat)
-        pens, pairs = [], 0
-        for day in sorted(cats_on):
-            nxt = day + timedelta(days=1)
-            if nxt not in cats_on:
-                continue  # not adjacent calendar days -> no rotation between them
-            pairs += 1
-            for ca in cats_on[day]:
-                for cb in cats_on[nxt]:
-                    if ca == cb:
-                        continue  # same shift type two days running is not a rotation
-                    pen = model.NewBoolVar(f"rot_{member.id}_{day}_{ca}_{cb}")
-                    model.Add(pen >= worked_cat[(day, ca)] + worked_cat[(nxt, cb)] - 1)
-                    pens.append(pen)
-        return (sum(pens), pairs) if pens else (None, 0)
+        # Penalise working a shift then another the *next* calendar day whose start
+        # time swings hard on the clock (the day-after-night problem). Weight is a
+        # precomputed constant per pair — bigger start-time swing = bigger penalty,
+        # discounted when there is ample rest between the two shifts. See _rotation_weight.
+        pens, total = [], 0
+        for a in my_shifts:
+            for b in my_shifts:
+                if a == b or start[b].date() != start[a].date() + timedelta(days=1):
+                    continue
+                wgt = _rotation_weight(start[a], end[a], start[b])
+                if wgt <= 0:
+                    continue
+                total += wgt
+                pen = model.NewBoolVar(f"rot_{member.id}_{a}_{b}")
+                model.Add(pen >= w(a) + w(b) - 1)
+                pens.append(wgt * pen)
+        return (sum(pens), total) if pens else (None, 0)
 
     return (None, 0)
+
+
+def _rotation_weight(start_a: datetime, end_a: datetime, start_b: datetime) -> int:
+    """Constant penalty for working shift A then shift B the next calendar day.
+
+    Driven by the clock-distance between the two start times (0..12h): a ~2h
+    stagger is fine, larger swings escalate superlinearly (day->night style).
+    Discounted by the rest gap between A's end and B's start — once there is a
+    full day (24h+) of recovery the penalty disappears entirely.
+    """
+    h_a = start_a.hour + start_a.minute / 60
+    h_b = start_b.hour + start_b.minute / 60
+    d = abs(h_a - h_b)
+    clock = min(d, 24 - d)            # 0..12, circular
+    over = max(0.0, clock - 2)        # 2h grace
+    base = over * over                # 4h->4, 8h->36, 12h->100
+
+    rest = (start_b - end_a).total_seconds() / 3600
+    if rest >= 24:
+        factor = 0.0
+    elif rest <= 8:
+        factor = 1.0
+    else:
+        factor = (24 - rest) / 16     # linear fade 8h->24h
+
+    return round(base * factor)
 
 
 def _worked_by_day(model, member, my_shifts, works, start):
@@ -331,21 +352,6 @@ def _worked_by_day(model, member, my_shifts, works, start):
             model.Add(v >= works[(member.id, sid)])
         model.Add(v <= sum(works[(member.id, sid)] for sid in sids))
         worked[day] = v
-    return worked
-
-
-def _worked_by_day_category(model, member, my_shifts, works, start, category):
-    """(date, category) -> Bool that is 1 iff the member works that category that day."""
-    by_key: dict = {}
-    for sid in my_shifts:
-        by_key.setdefault((start[sid].date(), category[sid]), []).append(sid)
-    worked = {}
-    for key, sids in by_key.items():
-        v = model.NewBoolVar(f"wc_{member.id}_{key[0]}_{key[1]}")
-        for sid in sids:
-            model.Add(v >= works[(member.id, sid)])
-        model.Add(v <= sum(works[(member.id, sid)] for sid in sids))
-        worked[key] = v
     return worked
 
 

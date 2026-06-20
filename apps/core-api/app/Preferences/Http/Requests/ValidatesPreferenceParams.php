@@ -16,19 +16,19 @@ trait ValidatesPreferenceParams
         $fail = fn (string $message) => $validator->errors()->add('params', $message);
 
         match ($type) {
-            PreferenceType::PreferredShiftType->value => (empty($params['type']) || ! is_string($params['type']))
+            PreferenceType::PreferredShiftType->value => (array_key_exists('type', $params) && ! is_string($params['type']))
                 ? $fail('preferred_shift_type requires params.type (string).') : null,
 
-            PreferenceType::HoursTarget->value => (! isset($params['target']) || ! is_int($params['target']) || $params['target'] < 1)
+            PreferenceType::HoursTarget->value => (array_key_exists('target', $params) && (! is_int($params['target']) || $params['target'] < 1))
                 ? $fail('hours_target requires params.target (positive integer).') : null,
 
-            PreferenceType::Weekend->value => (! in_array($params['mode'] ?? null, ['prefer', 'avoid'], true))
+            PreferenceType::Weekend->value => (array_key_exists('mode', $params) && ! in_array($params['mode'], ['prefer', 'avoid'], true))
                 ? $fail('weekend requires params.mode of prefer|avoid.') : null,
 
-            PreferenceType::MaxConsecutiveDays->value => (! isset($params['max']) || ! is_int($params['max']) || $params['max'] < 1)
+            PreferenceType::MaxConsecutiveDays->value => (array_key_exists('max', $params) && (! is_int($params['max']) || $params['max'] < 1))
                 ? $fail('max_consecutive_days requires params.max (positive integer).') : null,
 
-            PreferenceType::PreferredDaysOff->value => (! $this->validDaysList($params['days'] ?? null))
+            PreferenceType::PreferredDaysOff->value => (array_key_exists('days', $params) && ! $this->validDaysList($params['days']))
                 ? $fail('preferred_days_off requires params.days (array of ISO weekdays 1-7).') : null,
 
             default => null, // avoid_fast_rotation takes no params
@@ -37,7 +37,7 @@ trait ValidatesPreferenceParams
 
     private function validDaysList(mixed $days): bool
     {
-        if (! is_array($days) || $days === []) {
+        if (! is_array($days)) {
             return false;
         }
 

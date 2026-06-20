@@ -15,7 +15,7 @@ class Shift(BaseModel):
     id: str
     startAt: str  # ISO 8601
     endAt: str
-    category: str | None = None  # e.g. "day"/"night" — matched by preferred_shift_type
+    templateId: str | None = None  # originating shift template — matched by preferred_shift_type
     restHoursAfter: int | None = None  # rest required before the member's next shift
     requirements: list[Requirement] = []
 
@@ -51,7 +51,6 @@ class Rules(BaseModel):
 
 class SolveRequest(BaseModel):
     scheduleId: str
-    payrollPeriod: str = "month"  # week | biweekly | month
     shifts: list[Shift] = []
     members: list[Member] = []
     locked: list[Lock] = []

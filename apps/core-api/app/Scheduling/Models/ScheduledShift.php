@@ -16,7 +16,6 @@ class ScheduledShift extends Model
 
     protected $fillable = [
         'name',
-        'category',
         'start_at',
         'end_at',
         'rest_hours_after',

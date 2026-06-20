@@ -56,7 +56,6 @@ class GenerateScheduleShifts
 
                     $shift = new ScheduledShift([
                         'name' => $template->name,
-                        'category' => $template->category,
                         'start_at' => $startAt,
                         'end_at' => $endAt,
                         'rest_hours_after' => $template->rest_hours_after,

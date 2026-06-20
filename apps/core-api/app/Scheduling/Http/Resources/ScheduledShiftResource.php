@@ -17,7 +17,6 @@ class ScheduledShiftResource extends JsonResource
             'scheduleId' => $this->schedule_id,
             'shiftTemplateId' => $this->shift_template_id,
             'name' => $this->name,
-            'category' => $this->category,
             'startAt' => $this->start_at,
             'endAt' => $this->end_at,
             'restHoursAfter' => $this->rest_hours_after,

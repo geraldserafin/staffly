@@ -2,10 +2,11 @@
 
 namespace App\Organizations\Models;
 
-use App\Organizations\Enums\PayrollPeriod;
+use App\Members\Models\Member;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Organization extends Model
 {
@@ -14,7 +15,6 @@ class Organization extends Model
 
     protected $fillable = [
         'name',
-        'payroll_period',
     ];
 
     /**
@@ -22,8 +22,14 @@ class Organization extends Model
      */
     protected function casts(): array
     {
-        return [
-            'payroll_period' => PayrollPeriod::class,
-        ];
+        return [];
+    }
+
+    /**
+     * @return HasMany<Member>
+     */
+    public function members(): HasMany
+    {
+        return $this->hasMany(Member::class);
     }
 }

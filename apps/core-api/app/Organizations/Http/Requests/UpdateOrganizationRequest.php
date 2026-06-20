@@ -2,9 +2,7 @@
 
 namespace App\Organizations\Http\Requests;
 
-use App\Organizations\Enums\PayrollPeriod;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateOrganizationRequest extends FormRequest
 {
@@ -20,7 +18,6 @@ class UpdateOrganizationRequest extends FormRequest
     {
         return [
             'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'payroll_period' => ['sometimes', Rule::enum(PayrollPeriod::class)],
         ];
     }
 }

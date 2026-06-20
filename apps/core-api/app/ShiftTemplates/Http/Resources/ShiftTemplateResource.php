@@ -18,7 +18,6 @@ class ShiftTemplateResource extends JsonResource
             // Empty = applies to all the org's teams.
             'teamIds' => $this->whenLoaded('teams', fn () => $this->teams->pluck('id')),
             'name' => $this->name,
-            'category' => $this->category,
             'startTime' => $this->start_time,
             'endTime' => $this->end_time,
             'restHoursAfter' => $this->rest_hours_after,
